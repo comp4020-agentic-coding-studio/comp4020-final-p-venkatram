@@ -445,66 +445,68 @@ select {
   font-weight: 600;
 }
 
-.room-layout {
-  display: grid;
-  grid-template-columns: 12rem 1fr;
-  gap: 1.5rem;
-  align-items: start;
-  margin-top: 1rem;
+.room-panel[hidden] {
+  display: none;
 }
 
-.room-nav {
+/* Video/presence and lyrics now split the full page width evenly — there's
+   no more room-local sidebar eating into it, since the room's three views
+   are switched from the site-wide hamburger menu instead (.room-nav-btn
+   below lives there, not on this page). */
+.collab-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .collab-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Room panel switches, inside the site-nav (Layout.astro) --- */
+
+.site-nav-section {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 0.4rem;
-  position: sticky;
-  top: 1rem;
+  width: 100%;
+}
+
+.site-nav-heading {
+  margin: 0;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.site-nav-divider {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.4rem 0 0;
 }
 
 .room-nav-btn {
   text-align: left;
-  padding: 0.6rem 0.9rem;
+  padding: 0.5rem 0.7rem;
   border-radius: 0.5rem;
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--text);
   cursor: pointer;
   font: inherit;
+  font-size: 0.95rem;
 }
 
 .room-nav-btn[aria-selected="true"] {
   background: var(--accent);
   color: var(--accent-contrast);
   border-color: var(--accent);
-}
-
-.room-panel[hidden] {
-  display: none;
-}
-
-.collab-layout {
-  display: grid;
-  grid-template-columns: 1fr 20rem;
-  gap: 1.5rem;
-  align-items: start;
-}
-
-@media (max-width: 860px) {
-  .room-layout {
-    grid-template-columns: 1fr;
-  }
-  .room-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    position: static;
-    padding-bottom: 0.25rem;
-  }
-  .room-nav-btn {
-    white-space: nowrap;
-  }
-  .collab-layout {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 480px) {

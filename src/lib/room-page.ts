@@ -28,7 +28,13 @@ function renderPresence(list: HTMLElement, users: PresentUser[], selfId: string)
 // whole point of a room is that they don't drop just because you're reading
 // the score. A hidden <video> keeps its audio playing, so you still hear the
 // room from the Recording or Composition panel.
+//
+// The three switches themselves live in the site-wide hamburger menu
+// (Layout.astro's #room-nav-section), not a room-local sidebar — this just
+// reveals that section and wires it up; site-nav.ts closes the menu on
+// click.
 function initRoomNav(): void {
+  document.getElementById("room-nav-section")?.removeAttribute("hidden");
   const buttons = document.querySelectorAll<HTMLButtonElement>(".room-nav-btn");
   const panels = document.querySelectorAll<HTMLElement>(".room-panel");
   for (const button of buttons) {

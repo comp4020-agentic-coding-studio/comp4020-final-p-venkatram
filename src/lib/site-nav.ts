@@ -1,39 +1,47 @@
-// The site-wide hamburger menu (Rooms / Activity / auth / theme) — separate
-// from the room page's own sidebar (room-nav in room-page.ts), which is a
-// different, always-visible nav for a different purpose.
+// The site-wide hamburger menu: Rooms / Activity / auth / theme always, plus
+// (when room-page.ts reveals it) the current room's three panel switches —
+// one menu for the whole site, not a separate nav per page.
+function elements() {
+  return {
+    toggle: document.getElementById("site-nav-toggle"),
+    nav: document.getElementById("site-nav"),
+    backdrop: document.getElementById("site-nav-backdrop"),
+  };
+}
+
+export function closeSiteNav(): void {
+  const { toggle, nav, backdrop } = elements();
+  nav?.classList.remove("is-open");
+  backdrop?.classList.remove("is-open");
+  toggle?.setAttribute("aria-expanded", "false");
+  nav?.setAttribute("aria-hidden", "true");
+}
+
+function openSiteNav(): void {
+  const { toggle, nav, backdrop } = elements();
+  nav?.classList.add("is-open");
+  backdrop?.classList.add("is-open");
+  toggle?.setAttribute("aria-expanded", "true");
+  nav?.removeAttribute("aria-hidden");
+}
+
 export function initSiteNav(): void {
-  const toggle = document.getElementById("site-nav-toggle");
-  const nav = document.getElementById("site-nav");
-  const backdrop = document.getElementById("site-nav-backdrop");
+  const { toggle, nav, backdrop } = elements();
   const closeBtn = document.getElementById("site-nav-close");
   if (!(toggle instanceof HTMLButtonElement) || !nav || !backdrop) return;
 
-  function open(): void {
-    nav!.classList.add("is-open");
-    backdrop!.classList.add("is-open");
-    toggle!.setAttribute("aria-expanded", "true");
-    nav!.removeAttribute("aria-hidden");
-  }
-
-  function close(): void {
-    nav!.classList.remove("is-open");
-    backdrop!.classList.remove("is-open");
-    toggle!.setAttribute("aria-expanded", "false");
-    nav!.setAttribute("aria-hidden", "true");
-  }
-
   toggle.addEventListener("click", () => {
-    if (nav!.classList.contains("is-open")) close();
-    else open();
+    if (nav.classList.contains("is-open")) closeSiteNav();
+    else openSiteNav();
   });
-  backdrop.addEventListener("click", close);
-  closeBtn?.addEventListener("click", close);
+  backdrop.addEventListener("click", closeSiteNav);
+  closeBtn?.addEventListener("click", closeSiteNav);
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") close();
+    if (event.key === "Escape") closeSiteNav();
   });
-  // A link click should close the panel before the browser navigates, not
-  // leave it open underneath the next page.
-  for (const link of nav.querySelectorAll("a")) {
-    link.addEventListener("click", close);
+  // A link (or a room panel switch) closes the panel before acting on it,
+  // not leaving it open underneath whatever happens next.
+  for (const item of nav.querySelectorAll("a, .room-nav-btn")) {
+    item.addEventListener("click", closeSiteNav);
   }
 }
