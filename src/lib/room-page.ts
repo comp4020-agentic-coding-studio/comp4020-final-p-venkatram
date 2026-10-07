@@ -6,6 +6,7 @@ import { initCompositionGrid } from "./composition-grid";
 import type { Cell } from "../../shared/grid";
 import { initLyrics } from "./lyrics";
 import type { LyricLine } from "../../shared/lyrics";
+import { initRecordingPanel } from "./recording-panel";
 
 interface Room {
   id: string;
@@ -80,20 +81,31 @@ export function initRoomPage(): void {
         ? initCompositionGrid(compositionRoot, { send: (msg) => conn.send(msg) })
         : null;
       const lyricsController = lyricsRoot ? initLyrics(lyricsRoot, roomId, { send: (msg) => conn.send(msg) }) : null;
+      const remoteStreams = new Map<string, MediaStream>();
       const media = new RoomMedia(
         { send: (msg) => conn.send(msg) },
         {
           onPeerStream: (peer) => {
+            remoteStreams.set(peer.userId, peer.stream);
             if (!videoGrid) return;
             videoGrid.querySelector(`[data-peer="${peer.userId}"]`)?.remove();
             videoGrid.append(makeVideoTile(peer.userId, peer.displayName, peer.stream, false));
           },
           onPeerLeft: (userId) => {
+            remoteStreams.delete(userId);
             videoGrid?.querySelector(`[data-peer="${userId}"]`)?.remove();
           },
         },
       );
       media.setLocalStream(localStream);
+
+      const recordingRoot = document.getElementById("recording-root");
+      if (recordingRoot) {
+        initRecordingPanel(recordingRoot, {
+          getLocalStream: () => localStream,
+          getRemoteStreams: () => [...remoteStreams.values()],
+        });
+      }
 
       const originalSoundToggle = document.getElementById("original-sound-toggle");
       if (originalSoundToggle instanceof HTMLInputElement) {

@@ -173,10 +173,35 @@ instead of being rejected, an upload reaches everyone else in the room, and
 one person's play reaches another's open session. Whether the cursor is
 actually pleasant to sing along to is for the crit.
 
-## What's next
+Recording, on top of lyrics
+([`6766da5`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/6766da5)):
+entirely client-side, on purpose — a personal recording (`src/lib/recorder.ts`'s
+`StreamRecorder`, wrapping `MediaRecorder`) captures your own camera/mic
+locally; a group recording mixes your mic with every currently-connected
+peer's incoming audio through a `MediaStreamAudioDestinationNode` and records
+that. Neither sends anything to the server — it has no spare capacity on a
+256MB machine to receive, store, or transcode media, and doesn't need to.
+Group recording is audio-only: compositing every video tile onto a canvas to
+record a mixed video would be real additional work for a small-group
+rehearsal tool where the shared *sound* is the thing worth keeping, so that's
+where this pass draws the line. Both recordings end in a local download
+(`downloadBlob`); uploading to Google Drive or OneDrive is a stretch goal,
+flagged directly in the room UI rather than silently missing.
 
-Recording: personal (local mic/cam via MediaRecorder) and group (mixing
-local plus remote WebRTC audio through a MediaStreamAudioDestinationNode),
-both ending in a local download — cloud export is a clearly-labelled stretch
-goal, not built this pass. This file gets rewritten once more with that
-stage's reasoning and cited commits.
+Real `MediaRecorder`/`AudioContext` behaviour isn't something jsdom can
+exercise, so there's no spec test pretending to cover it — like camera and
+WebRTC before it, this is a person's judgement at the crit.
+
+## Where this leaves the final project
+
+Every feature from the brief has a first version: accounts, consent-gated
+camera with "Original Sound," a shared composition space, lyrics with a
+karaoke cursor, and personal/group recording — deployed as one Node process
+on the course's single Fly machine, real-time by crit 9's definition and
+checked by `spec/*.test.ts` wherever a script can actually tell the
+difference between working and not. The crit 10 logging requirement has a
+head start from the foundation commit (structured events, a live
+`/activity/` view) rather than being bolted on the week it's due. What's
+left for the weeks ahead: crit 10's own logging additions as more user
+actions accrue events worth watching, and the stretch goal (real Drive/
+OneDrive OAuth) if time allows before the A3 deadline.
