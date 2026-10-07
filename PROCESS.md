@@ -70,11 +70,45 @@ is the first page that actually requires a session, via a client-side
 every page is the same HTML for everyone, so "is someone logged in" is
 answered after load, by asking the server, on every page that needs to know.
 
+Real-time rooms, on top of accounts
+([`323ea82`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/323ea82)):
+one WebSocket per client (`server/ws.ts`), multiplexed by a `type` field, backing a shared
+in-memory presence registry (`server/realtime/presence.ts`) that every future
+real-time feature (signaling, composition, lyrics transport) will reuse
+rather than opening its own connection. `spec/realtime.test.ts` drives two
+real signed-up users into a room from two independent WebSocket clients and
+asserts the second's join reaches the first within a second — the crit 9 claim,
+checked mechanically rather than just demoed live.
+
+## Crit 9: the simultaneous-use decision
+
+**Decision:** presence is ephemeral and room membership is persistent, kept
+as two separate things. `room_members` records everyone who's ever joined a
+room (so a returning user's `/rooms/` list survives a reconnect or a next-day
+visit); the live "here now" list (`presence.ts`'s in-memory registry) only
+ever reflects sockets that are actually open right now, rebuilt from scratch
+on every connect via `presence.sync`.
+
+**Alternative considered:** derive "who's here" from `room_members` directly
+— simpler, one less concept. Rejected: it would make a room look permanently
+populated by everyone who ever dropped by, the "ghost users" problem every
+real chat app has to engineer around. A teacher glancing at who's in the room
+needs that to mean *right now*, not *ever*.
+
+**Cost of the choice made:** two sources of truth to keep straight instead of
+one, and presence resets to empty if the process restarts (acceptable — Fly's
+`auto_stop_machines` already means a quiet room's connections drop and
+reconnect on the next visit anyway).
+
+This decision will grow a second clause once the shared composition space and
+lyrics transport land: those need a conflict-handling answer too (two people
+editing the same thing at once), which doesn't exist yet to decide about
+honestly.
+
 ## What's next
 
-Real-time rooms with WebSocket presence and the crit 9 decision about
-simultaneous use, then camera consent and the "Original Sound" toggle, the
-shared composition space, lyrics upload and the karaoke cursor, and
-recording. Each lands as its own commit; this file gets rewritten with the
-next stage's reasoning and cited commits as that happens, per the brief's
-instruction to rewrite rather than append.
+Camera consent and the "Original Sound" toggle, the shared composition
+space, lyrics upload and the karaoke cursor, and recording. Each lands as
+its own commit; this file gets rewritten with the next stage's reasoning and
+cited commits as that happens, per the brief's instruction to rewrite rather
+than append.

@@ -1,0 +1,22 @@
+---
+import Layout from "../../layouts/Layout.astro";
+---
+
+<Layout title="Room" description="A Roundsong room.">
+  <div id="room-not-found" class="card" hidden>
+    <h1>Room not found</h1>
+    <p class="muted">Check the link, or <a href="/rooms/">go back to your rooms</a>.</p>
+  </div>
+  <div id="room-root" hidden>
+    <h1 id="room-name"></h1>
+    <p class="muted">Share this page's link to invite someone else in.</p>
+    <section class="card" style="max-width:24rem;">
+      <h2 style="margin-top:0;">Here now</h2>
+      <ul id="presence-list" style="list-style:none; padding:0; margin:0;"></ul>
+    </section>
+  </div>
+  <script>
+    import { initRoomPage } from "../../lib/room-page";
+    initRoomPage();
+  </script>
+</Layout>

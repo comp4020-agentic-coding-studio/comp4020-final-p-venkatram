@@ -5,20 +5,22 @@ import Layout from "../../layouts/Layout.astro";
 <Layout title="Rooms" description="Your Roundsong rooms.">
   <div id="rooms-root" hidden>
     <h1>Rooms</h1>
-    <p class="muted">
-      Real-time rooms — create or join one, with presence, camera consent and the shared composition space — land in
-      the next commit. For now, this page just proves you're signed in.
-    </p>
+    <div id="room-list"></div>
+
+    <div class="card" style="max-width:26rem;">
+      <h2 style="margin-top:0;">Create a room</h2>
+      <form id="create-room-form" novalidate>
+        <div class="field">
+          <label for="room-name">Room name</label>
+          <input id="room-name" name="name" type="text" required maxlength="80" placeholder="Thursday rehearsal" />
+        </div>
+        <p id="create-room-error" class="error-text" role="alert"></p>
+        <button type="submit" class="btn">Create</button>
+      </form>
+    </div>
   </div>
   <script>
-    import { requireSession } from "../../lib/session";
-
-    requireSession()
-      .then(() => {
-        document.getElementById("rooms-root")?.removeAttribute("hidden");
-      })
-      .catch(() => {
-        // requireSession already redirected to /login/
-      });
+    import { initRoomsPage } from "../../lib/rooms-page";
+    initRoomsPage();
   </script>
 </Layout>

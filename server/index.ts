@@ -14,6 +14,8 @@ import { serveStatic } from "./static.ts";
 import { sendJson } from "./http-util.ts";
 import { handleActivityApi } from "./routes/activity.ts";
 import { handleAuthApi } from "./routes/auth.ts";
+import { handleRoomsApi } from "./routes/rooms.ts";
+import { attachWebSocketServer } from "./ws.ts";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const DIST = join(ROOT, "dist");
@@ -22,6 +24,7 @@ const db = getDb(); // boots the schema before the first request can touch it
 
 async function handleApi(req: IncomingMessage, res: ServerResponse, path: string): Promise<boolean> {
   if (await handleAuthApi(req, res, path, db)) return true;
+  if (await handleRoomsApi(req, res, path, db)) return true;
   if (await handleActivityApi(req, res, path)) return true;
   return false;
 }
@@ -61,6 +64,7 @@ const server = createServer((req, res) => {
     if (!res.headersSent) sendJson(res, 500, { error: "internal error" });
   });
 });
+attachWebSocketServer(server);
 server.listen(PORT, "0.0.0.0", () => {
   logEvent("server.start", { port: PORT });
 });
