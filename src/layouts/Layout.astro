@@ -29,20 +29,29 @@ const { title, description = "A collaborative music-education platform for dista
   <body>
     <header class="site-header">
       <a class="brand" href="/">Round<span class="brand-accent">song</span></a>
-      <nav class="nav">
-        <a href="/rooms/">Rooms</a>
-        <a href="/activity/">Activity</a>
-        <span id="auth-nav"></span>
-        <button type="button" class="theme-toggle" data-theme-toggle>Switch to dark</button>
-      </nav>
+      <button type="button" class="hamburger-btn" id="site-nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">
+        <span class="hamburger-icon" aria-hidden="true"></span>
+      </button>
     </header>
+
+    <div class="site-nav-backdrop" id="site-nav-backdrop"></div>
+    <nav class="site-nav" id="site-nav" aria-label="Main menu" aria-hidden="true">
+      <button type="button" class="site-nav-close" id="site-nav-close" aria-label="Close menu">&times;</button>
+      <a href="/rooms/">Rooms</a>
+      <a href="/activity/">Activity</a>
+      <span id="auth-nav"></span>
+      <button type="button" class="theme-toggle" data-theme-toggle>Switch to dark</button>
+    </nav>
+
     <main class="shell">
       <slot />
     </main>
     <script>
       import { initThemeToggle } from "../lib/theme";
       import { renderAuthNav } from "../lib/session";
+      import { initSiteNav } from "../lib/site-nav";
       initThemeToggle();
+      initSiteNav();
       void renderAuthNav();
     </script>
   </body>
