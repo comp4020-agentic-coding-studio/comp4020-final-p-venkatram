@@ -10,8 +10,17 @@ import { WebSocketServer, type WebSocket } from "ws";
 import { getDb } from "./db.ts";
 import { sessionTokenFromRequest, userForToken } from "./auth.ts";
 import { getRoom, joinRoom } from "./rooms.ts";
-import { addConnection, broadcast, type Connection, presentUsers, removeConnection } from "./realtime/presence.ts";
+import {
+  addConnection,
+  broadcast,
+  type Connection,
+  presentUsers,
+  removeConnection,
+  sendToUser,
+} from "./realtime/presence.ts";
 import { logEvent } from "./log.ts";
+
+const SIGNAL_TYPES = new Set(["webrtc.offer", "webrtc.answer", "webrtc.ice"]);
 
 const wss = new WebSocketServer({ noServer: true });
 
@@ -45,11 +54,27 @@ function onConnection(ws: WebSocket, roomId: string, userId: string, displayName
   });
 }
 
-function handleMessage(_roomId: string, _sender: Connection, message: unknown): void {
-  // No message types beyond presence (handled on connect/close) yet.
-  // WebRTC signaling and shared-state broadcast land here in later commits,
-  // each keyed off `(message as { type?: string }).type`.
-  void message;
+interface SignalMessage {
+  type: string;
+  to: string;
+  [field: string]: unknown;
+}
+
+function isSignalMessage(message: unknown): message is SignalMessage {
+  if (typeof message !== "object" || message === null) return false;
+  const candidate = message as Record<string, unknown>;
+  return typeof candidate.type === "string" && SIGNAL_TYPES.has(candidate.type) && typeof candidate.to === "string";
+}
+
+function handleMessage(roomId: string, sender: Connection, message: unknown): void {
+  // The server relays SDP/ICE between two specific peers without reading
+  // their contents — actual audio/video stays peer-to-peer, never routed
+  // through this process. Shared-state broadcast (composition, lyrics
+  // transport) lands here in a later commit, on the same dispatch.
+  if (isSignalMessage(message)) {
+    const { to, ...rest } = message;
+    sendToUser(roomId, to, { ...rest, from: sender.userId });
+  }
 }
 
 export function attachWebSocketServer(server: Server): void {

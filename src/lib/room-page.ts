@@ -1,5 +1,7 @@
 import { requireSession } from "./session";
-import { connectToRoom, type PresentUser } from "./room-connection";
+import { connectToRoom, type PresentUser, type RoomConnection } from "./room-connection";
+import { askForMediaConsent } from "./media-consent";
+import { RoomMedia } from "./webrtc";
 
 interface Room {
   id: string;
@@ -13,6 +15,22 @@ function renderPresence(list: HTMLElement, users: PresentUser[], selfId: string)
     li.textContent = user.userId === selfId ? `${user.displayName} (you)` : user.displayName;
     list.append(li);
   }
+}
+
+function makeVideoTile(id: string, label: string, stream: MediaStream, muted: boolean): HTMLElement {
+  const tile = document.createElement("div");
+  tile.className = "video-tile";
+  tile.dataset.peer = id;
+  const video = document.createElement("video");
+  video.autoplay = true;
+  video.playsInline = true;
+  video.muted = muted;
+  video.srcObject = stream;
+  const caption = document.createElement("span");
+  caption.className = "video-tile-label";
+  caption.textContent = label;
+  tile.append(video, caption);
+  return tile;
 }
 
 export function initRoomPage(): void {
@@ -32,31 +50,74 @@ export function initRoomPage(): void {
         return;
       }
       const data = (await res.json()) as { room: Room };
-      root?.removeAttribute("hidden");
       const nameEl = document.getElementById("room-name");
       if (nameEl) nameEl.textContent = data.room.name;
 
+      const consentRoot = document.getElementById("consent-root");
+      const localStream = consentRoot ? await askForMediaConsent(consentRoot) : null;
+
+      root?.removeAttribute("hidden");
+      const videoGrid = document.getElementById("video-grid");
       const presenceList = document.getElementById("presence-list");
       const presentUsers = new Map<string, PresentUser>();
-      const rerender = () => {
+      const rerenderPresence = () => {
         if (presenceList instanceof HTMLUListElement) renderPresence(presenceList, [...presentUsers.values()], self.id);
       };
 
-      connectToRoom(roomId, {
+      if (localStream && videoGrid) {
+        videoGrid.append(makeVideoTile("self", `${self.displayName} (you)`, localStream, true));
+      }
+
+      let conn: RoomConnection;
+      const media = new RoomMedia(
+        { send: (msg) => conn.send(msg) },
+        {
+          onPeerStream: (peer) => {
+            if (!videoGrid) return;
+            videoGrid.querySelector(`[data-peer="${peer.userId}"]`)?.remove();
+            videoGrid.append(makeVideoTile(peer.userId, peer.displayName, peer.stream, false));
+          },
+          onPeerLeft: (userId) => {
+            videoGrid?.querySelector(`[data-peer="${userId}"]`)?.remove();
+          },
+        },
+      );
+      media.setLocalStream(localStream);
+
+      const originalSoundToggle = document.getElementById("original-sound-toggle");
+      if (originalSoundToggle instanceof HTMLInputElement) {
+        if (!localStream?.getAudioTracks().length) {
+          originalSoundToggle.disabled = true;
+        } else {
+          originalSoundToggle.addEventListener("change", () => {
+            void media.setOriginalSound(originalSoundToggle.checked);
+          });
+        }
+      }
+
+      conn = connectToRoom(roomId, {
         onPresenceSync: (users) => {
           presentUsers.clear();
           for (const user of users) presentUsers.set(user.userId, user);
-          rerender();
+          rerenderPresence();
+          void media.connectToExisting(users.filter((u) => u.userId !== self.id));
         },
         onPresenceJoin: (user) => {
           presentUsers.set(user.userId, user);
-          rerender();
+          rerenderPresence();
+          media.noteDisplayName(user.userId, user.displayName);
         },
         onPresenceLeave: (userId) => {
           presentUsers.delete(userId);
-          rerender();
+          rerenderPresence();
+          media.removePeer(userId);
+        },
+        onMessage: (message) => {
+          void media.handleSignal(message);
         },
       });
+
+      window.addEventListener("beforeunload", () => media.closeAll());
     })
     .catch(() => {
       // requireSession already redirected to /login/

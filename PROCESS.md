@@ -105,10 +105,26 @@ lyrics transport land: those need a conflict-handling answer too (two people
 editing the same thing at once), which doesn't exist yet to decide about
 honestly.
 
+Camera, mic, and "Original Sound", on top of real-time rooms
+([`24a264e`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/24a264e)):
+a consent modal (`src/lib/media-consent.ts`) runs before any `getUserMedia`
+call, every time a room is entered — never skipped, never remembered across
+visits, per the rule in `CLAUDE.md`. A small WebRTC mesh (`src/lib/webrtc.ts`)
+reuses the existing WebSocket as a signaling relay (`server/ws.ts` forwards
+SDP/ICE to one named peer, `server/realtime/presence.ts`'s `sendToUser`) —
+media itself never touches the server. Someone who declines camera/mic still
+gets `recvonly` transceivers, so they can watch and listen without being seen
+or heard. "Original Sound" calls `track.applyConstraints` on the live mic
+track rather than re-acquiring it, so toggling it needs no renegotiation.
+
+`spec/signaling.test.ts` checks the one part of this a headless test actually
+can: the server relays an offer to the *right* peer, tagged with who sent it,
+and a third person in the same room never sees it. Real cameras and real
+peer connections are a person's judgement at the crit, not a script's.
+
 ## What's next
 
-Camera consent and the "Original Sound" toggle, the shared composition
-space, lyrics upload and the karaoke cursor, and recording. Each lands as
-its own commit; this file gets rewritten with the next stage's reasoning and
-cited commits as that happens, per the brief's instruction to rewrite rather
-than append.
+The shared composition space, lyrics upload and the karaoke cursor, and
+recording. Each lands as its own commit; this file gets rewritten with the
+next stage's reasoning and cited commits as that happens, per the brief's
+instruction to rewrite rather than append.

@@ -53,3 +53,16 @@ export function broadcast(roomId: string, message: unknown, exclude?: Connection
     if (conn.ws.readyState === conn.ws.OPEN) conn.ws.send(payload);
   }
 }
+
+// WebRTC signaling is point-to-point, not room-wide. If a user has more than
+// one tab open in the same room, only one gets the message — an accepted gap
+// for a small-group tool, not worth a multi-target fan-out for.
+export function sendToUser(roomId: string, userId: string, message: unknown): boolean {
+  for (const conn of connectionsInRoom(roomId)) {
+    if (conn.userId === userId && conn.ws.readyState === conn.ws.OPEN) {
+      conn.ws.send(JSON.stringify(message));
+      return true;
+    }
+  }
+  return false;
+}
