@@ -94,10 +94,16 @@ function handleMessage(db: DatabaseSync, roomId: string, sender: Connection, mes
   if (!record) return;
 
   if (record.type === "composition.toggle") {
-    const next = toggleCell(db, roomId, Number(record.step), Number(record.pitch));
+    const next = toggleCell(db, roomId, Number(record.step), Number(record.pitch), Number(record.duration));
     if (next) {
       broadcast(roomId, { type: "composition.update", ...next });
-      logEvent("composition.toggle", { roomId, userId: sender.userId, step: record.step, pitch: record.pitch });
+      logEvent("composition.toggle", {
+        roomId,
+        userId: sender.userId,
+        step: record.step,
+        pitch: record.pitch,
+        duration: record.duration,
+      });
     }
     return;
   }

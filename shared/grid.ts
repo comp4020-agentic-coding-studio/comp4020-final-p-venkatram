@@ -12,7 +12,26 @@ export const MAX_BPM = 220;
 export const PENTATONIC = [0, 2, 4, 7, 9];
 const BASE_MIDI = 57; // A3 — a comfortable low register across two octaves
 
-export type Cell = [step: number, pitch: number];
+// Same five categories as crit4's audio.ts, sixteenth..whole — a note's
+// duration is which of these it was placed as, not a free time value, so
+// there's a fixed, known set of release lengths (composition-player.ts) and
+// glyphs (staff-notation.ts) to draw from.
+export const DURATION_CATEGORIES = [0, 1, 2, 3, 4] as const;
+export type DurationCategory = (typeof DURATION_CATEGORIES)[number];
+export const DEFAULT_DURATION: DurationCategory = 2; // quarter
+
+// How much longer a note rings for each duration category, relative to the
+// base (quarter) release — ported from crit4's audio.ts
+// DURATION_RELEASE_MULTIPLIERS. Index 2 (quarter) is 1.0, the unscaled sound.
+export const DURATION_RELEASE_MULTIPLIERS: Record<DurationCategory, number> = {
+  0: 0.4, // sixteenth
+  1: 0.65, // eighth
+  2: 1.0, // quarter
+  3: 1.5, // half
+  4: 2.2, // whole
+};
+
+export type Cell = [step: number, pitch: number, duration: DurationCategory];
 
 export function pitchIndexToMidi(pitchIndex: number): number {
   const clamped = Math.max(0, Math.min(GRID_PITCHES - 1, pitchIndex));
@@ -25,8 +44,20 @@ export function midiToFrequency(midi: number): number {
   return 440 * 2 ** ((midi - 69) / 12);
 }
 
-export function isValidCell(step: number, pitch: number): boolean {
-  return Number.isInteger(step) && Number.isInteger(pitch) && step >= 0 && step < GRID_STEPS && pitch >= 0 && pitch < GRID_PITCHES;
+export function isValidDuration(duration: number): duration is DurationCategory {
+  return (DURATION_CATEGORIES as readonly number[]).includes(duration);
+}
+
+export function isValidCell(step: number, pitch: number, duration: number): boolean {
+  return (
+    Number.isInteger(step) &&
+    Number.isInteger(pitch) &&
+    step >= 0 &&
+    step < GRID_STEPS &&
+    pitch >= 0 &&
+    pitch < GRID_PITCHES &&
+    isValidDuration(duration)
+  );
 }
 
 export function clampBpm(bpm: number): number {

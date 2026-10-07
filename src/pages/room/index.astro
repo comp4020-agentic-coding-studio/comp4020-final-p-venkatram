@@ -14,34 +14,63 @@ import Layout from "../../layouts/Layout.astro";
     <h1 id="room-name"></h1>
     <p class="muted">Share this page's link to invite someone else in.</p>
 
-    <div id="video-grid" class="video-grid"></div>
+    <div class="room-layout">
+      <nav class="room-nav" role="tablist" aria-label="Room views">
+        <button type="button" class="room-nav-btn" data-panel="collab" role="tab" aria-selected="true">
+          Collaboration Room
+        </button>
+        <button type="button" class="room-nav-btn" data-panel="record" role="tab" aria-selected="false">
+          Recording
+        </button>
+        <button type="button" class="room-nav-btn" data-panel="compose" role="tab" aria-selected="false">
+          Composition Space
+        </button>
+      </nav>
 
-    <label class="field" style="flex-direction:row; align-items:center; gap:0.5rem;">
-      <input type="checkbox" id="original-sound-toggle" />
-      <span>Original Sound (no echo cancellation, noise suppression, or auto-gain — for singing together, not talking)</span>
-    </label>
+      <div class="room-panels">
+        <section id="panel-collab" class="room-panel" role="tabpanel">
+          <div class="collab-layout">
+            <div class="collab-main">
+              <div id="video-grid" class="video-grid"></div>
 
-    <section class="card">
-      <h2 style="margin-top:0;">Recording</h2>
-      <div id="recording-root"></div>
-    </section>
+              <label class="field" style="flex-direction:row; align-items:center; gap:0.5rem;">
+                <input type="checkbox" id="original-sound-toggle" />
+                <span
+                  >Original Sound (no echo cancellation, noise suppression, or auto-gain — for singing together, not
+                  talking)</span
+                >
+              </label>
 
-    <section class="card">
-      <h2 style="margin-top:0;">Lyrics</h2>
-      <p class="muted">Anyone can upload or press play — the cursor follows whoever's leading.</p>
-      <div id="lyrics-root"></div>
-    </section>
+              <section class="card" style="max-width:24rem;">
+                <h2 style="margin-top:0;">Here now</h2>
+                <ul id="presence-list" style="list-style:none; padding:0; margin:0;"></ul>
+              </section>
+            </div>
 
-    <section class="card">
-      <h2 style="margin-top:0;">Compose together</h2>
-      <p class="muted">Tap a cell to add or remove a note. Everyone here sees the same grid, live.</p>
-      <div id="composition-root"></div>
-    </section>
+            <div class="collab-side card">
+              <h2 style="margin-top:0;">Lyrics</h2>
+              <p class="muted">Anyone can upload or press play — the cursor follows whoever's leading.</p>
+              <div id="lyrics-root"></div>
+            </div>
+          </div>
+        </section>
 
-    <section class="card" style="max-width:24rem;">
-      <h2 style="margin-top:0;">Here now</h2>
-      <ul id="presence-list" style="list-style:none; padding:0; margin:0;"></ul>
-    </section>
+        <section id="panel-record" class="room-panel" role="tabpanel" hidden>
+          <div class="card">
+            <h2 style="margin-top:0;">Recording</h2>
+            <div id="recording-root"></div>
+          </div>
+        </section>
+
+        <section id="panel-compose" class="room-panel" role="tabpanel" hidden>
+          <div class="card">
+            <h2 style="margin-top:0;">Compose together</h2>
+            <p class="muted">Pick a duration, then click a position on the staff to place or remove a note. Everyone here sees the same staff, live.</p>
+            <div id="composition-root"></div>
+          </div>
+        </section>
+      </div>
+    </div>
   </div>
   <script>
     import { initRoomPage } from "../../lib/room-page";

@@ -62,15 +62,15 @@ it("broadcasts a composition edit to everyone, and persists it for a late joiner
   await nextMessage(otherWs, (m) => m.type === "composition.sync");
 
   const otherSeesUpdate = nextMessage(otherWs, (m) => m.type === "composition.update");
-  ownerWs.send(JSON.stringify({ type: "composition.toggle", step: 3, pitch: 5 }));
+  ownerWs.send(JSON.stringify({ type: "composition.toggle", step: 3, pitch: 5, duration: 2 }));
   const update = await otherSeesUpdate;
-  expect(update.cells).toContainEqual([3, 5]);
+  expect(update.cells).toContainEqual([3, 5, 2]);
 
-  // A late joiner sees the persisted state immediately, not an empty grid.
+  // A late joiner sees the persisted state immediately, not an empty staff.
   const lateCookie = await signUp();
   const lateWs = await connect(roomId, lateCookie);
   const sync = await nextMessage(lateWs, (m) => m.type === "composition.sync");
-  expect(sync.cells).toContainEqual([3, 5]);
+  expect(sync.cells).toContainEqual([3, 5, 2]);
 
   ownerWs.close();
   otherWs.close();
@@ -83,7 +83,19 @@ it("ignores a toggle with an out-of-range cell", async () => {
   const ws = await connect(roomId, cookie);
   await nextMessage(ws, (m) => m.type === "composition.sync");
 
-  ws.send(JSON.stringify({ type: "composition.toggle", step: 999, pitch: 999 }));
+  ws.send(JSON.stringify({ type: "composition.toggle", step: 999, pitch: 999, duration: 2 }));
+  await expect(nextMessage(ws, (m) => m.type === "composition.update", 300)).rejects.toThrow();
+
+  ws.close();
+});
+
+it("ignores a toggle with an invalid duration", async () => {
+  const cookie = await signUp();
+  const roomId = await createRoom(cookie);
+  const ws = await connect(roomId, cookie);
+  await nextMessage(ws, (m) => m.type === "composition.sync");
+
+  ws.send(JSON.stringify({ type: "composition.toggle", step: 1, pitch: 1, duration: 99 }));
   await expect(nextMessage(ws, (m) => m.type === "composition.update", 300)).rejects.toThrow();
 
   ws.close();

@@ -192,6 +192,37 @@ Real `MediaRecorder`/`AudioContext` behaviour isn't something jsdom can
 exercise, so there's no spec test pretending to cover it — like camera and
 WebRTC before it, this is a person's judgement at the crit.
 
+## Room UI: sidebar nav and real staff notation
+
+On top of recording
+([`855bda7`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/855bda7)):
+the room page was one long stack of sections; it's now three views
+(Collaboration Room, Recording, Composition Space) behind a sidebar, with
+lyrics shown beside the Collaboration Room rather than as its own section.
+
+**Decision:** switching views never tears down the WebSocket, the WebRTC
+peers, or the local media stream — it's one page with three panels toggled
+by `hidden` (`src/lib/room-page.ts`'s `initRoomNav`), not three separate page
+loads. Re-establishing any of those connections is expensive, and the whole
+point of a room is that they don't drop just because you're reading the
+score. A side effect worth naming rather than treating as a bug: a hidden
+`<video>` keeps its audio playing, so you still hear the room from the
+Recording or Composition panel.
+
+**The composition space is now real staff notation, not a button grid** —
+`src/lib/composition-staff.ts` renders an SVG treble staff (noteheads, stems,
+flags, ledger lines) with a duration-picker toolbar, Musescore's own
+"pick a duration, click where it goes" model, simplified: one staff, no time
+signatures, no measures, no multi-voice. This is a direct port, not just
+borrowed inspiration — `src/lib/staff-notation.ts` is crit 4's
+`notation.ts` (`DEGREE_TABLE`, ledger-line math, note glyphs), which already
+solves this exact problem for the same 10-degree pentatonic system
+`shared/grid.ts` already shares with it. `Cell` grew from `[step, pitch]` to
+`[step, pitch, duration]` — no migration needed, since `compositions.grid` is
+a JSON blob and there's no production data yet to migrate. Playback
+(`composition-player.ts`) now rings each note for its actual written
+duration (crit 4's `DURATION_RELEASE_MULTIPLIERS`) instead of a flat 0.3s.
+
 ## Where this leaves the final project
 
 Every feature from the brief has a first version: accounts, consent-gated

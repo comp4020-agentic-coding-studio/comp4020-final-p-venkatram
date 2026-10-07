@@ -5,12 +5,19 @@
 // a shared grid's cells, and plays locally for whoever presses play — the
 // grid itself, not the playhead, is what's synced across people (see
 // PROCESS.md's crit 9 ADR on why this app doesn't promise synced playback).
-import { clampBpm, type Cell, GRID_STEPS, midiToFrequency, pitchIndexToMidi } from "../../shared/grid";
+import {
+  clampBpm,
+  type Cell,
+  DURATION_RELEASE_MULTIPLIERS,
+  GRID_STEPS,
+  midiToFrequency,
+  pitchIndexToMidi,
+} from "../../shared/grid";
 
 const LOOKAHEAD_MS = 25;
 const SCHEDULE_AHEAD_SEC = 0.1;
 const START_DELAY_SEC = 0.05;
-const NOTE_RELEASE_SEC = 0.3;
+const BASE_RELEASE_SEC = 0.3; // a quarter note's release; other durations scale from here
 
 export type StepCallback = (step: number) => void;
 
@@ -60,8 +67,8 @@ export class CompositionPlayer {
     const stepDuration = 60 / clampBpm(this.getBpm()) / 4; // 16th notes
     while (this.nextStepTime < ctx.currentTime + SCHEDULE_AHEAD_SEC) {
       const step = this.currentStep % GRID_STEPS;
-      for (const [cellStep, pitch] of this.getCells()) {
-        if (cellStep === step) this.playNote(pitchIndexToMidi(pitch), this.nextStepTime);
+      for (const [cellStep, pitch, duration] of this.getCells()) {
+        if (cellStep === step) this.playNote(pitchIndexToMidi(pitch), this.nextStepTime, duration);
       }
       this.onStep?.(step);
       this.nextStepTime += stepDuration;
@@ -69,9 +76,10 @@ export class CompositionPlayer {
     }
   }
 
-  private playNote(midi: number, time: number): void {
+  private playNote(midi: number, time: number, duration: Cell[2]): void {
     const ctx = this.ctx;
     if (!ctx) return;
+    const release = BASE_RELEASE_SEC * (DURATION_RELEASE_MULTIPLIERS[duration] ?? 1);
     const freq = midiToFrequency(midi);
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -79,9 +87,9 @@ export class CompositionPlayer {
     osc.frequency.setValueAtTime(freq, time);
     gain.gain.setValueAtTime(0, time);
     gain.gain.linearRampToValueAtTime(0.25, time + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, time + NOTE_RELEASE_SEC);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + release);
     osc.connect(gain).connect(ctx.destination);
     osc.start(time);
-    osc.stop(time + NOTE_RELEASE_SEC + 0.02);
+    osc.stop(time + release + 0.02);
   }
 }

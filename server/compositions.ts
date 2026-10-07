@@ -5,7 +5,7 @@
 // reconcile later — see PROCESS.md's crit 9 ADR for why last-writer-wins
 // without locking is the right shape for a small, low-conflict room.
 import type { DatabaseSync } from "node:sqlite";
-import { clampBpm, DEFAULT_BPM, type Cell, isValidCell } from "../shared/grid.ts";
+import { clampBpm, DEFAULT_BPM, type Cell, type DurationCategory, isValidCell } from "../shared/grid.ts";
 
 export interface CompositionState {
   bpm: number;
@@ -37,13 +37,23 @@ function save(db: DatabaseSync, roomId: string, state: CompositionState): void {
   ).run(roomId, state.bpm, JSON.stringify(state.cells), Date.now());
 }
 
-export function toggleCell(db: DatabaseSync, roomId: string, step: number, pitch: number): CompositionState | null {
-  if (!isValidCell(step, pitch)) return null;
+// A click always toggles by (step, pitch) alone, duration included: clicking
+// an occupied slot removes whatever note is there regardless of its
+// duration, clicking an empty one places a note at the duration the client
+// currently has selected in its toolbar.
+export function toggleCell(
+  db: DatabaseSync,
+  roomId: string,
+  step: number,
+  pitch: number,
+  duration: number,
+): CompositionState | null {
+  if (!isValidCell(step, pitch, duration)) return null;
   const current = getComposition(db, roomId);
   const exists = current.cells.some(([s, p]) => s === step && p === pitch);
   const cells: Cell[] = exists
     ? current.cells.filter(([s, p]) => !(s === step && p === pitch))
-    : [...current.cells, [step, pitch]];
+    : [...current.cells, [step, pitch, duration as DurationCategory]];
   const next = { bpm: current.bpm, cells };
   save(db, roomId, next);
   return next;

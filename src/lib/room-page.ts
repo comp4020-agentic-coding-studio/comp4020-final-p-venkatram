@@ -2,7 +2,7 @@ import { requireSession } from "./session";
 import { connectToRoom, type PresentUser, type RoomConnection } from "./room-connection";
 import { askForMediaConsent } from "./media-consent";
 import { RoomMedia } from "./webrtc";
-import { initCompositionGrid } from "./composition-grid";
+import { initCompositionGrid } from "./composition-staff";
 import type { Cell } from "../../shared/grid";
 import { initLyrics } from "./lyrics";
 import type { LyricLine } from "../../shared/lyrics";
@@ -19,6 +19,24 @@ function renderPresence(list: HTMLElement, users: PresentUser[], selfId: string)
     const li = document.createElement("li");
     li.textContent = user.userId === selfId ? `${user.displayName} (you)` : user.displayName;
     list.append(li);
+  }
+}
+
+// Switches which room panel is visible — never tears anything down. The
+// WebSocket, WebRTC peers and local media keep running underneath whichever
+// panel is hidden, since re-establishing any of them is expensive and the
+// whole point of a room is that they don't drop just because you're reading
+// the score. A hidden <video> keeps its audio playing, so you still hear the
+// room from the Recording or Composition panel.
+function initRoomNav(): void {
+  const buttons = document.querySelectorAll<HTMLButtonElement>(".room-nav-btn");
+  const panels = document.querySelectorAll<HTMLElement>(".room-panel");
+  for (const button of buttons) {
+    button.addEventListener("click", () => {
+      const target = button.dataset.panel;
+      for (const panel of panels) panel.toggleAttribute("hidden", panel.id !== `panel-${target}`);
+      for (const other of buttons) other.setAttribute("aria-selected", String(other === button));
+    });
   }
 }
 
@@ -46,6 +64,8 @@ export function initRoomPage(): void {
     notFound?.removeAttribute("hidden");
     return;
   }
+
+  initRoomNav();
 
   requireSession()
     .then(async (self) => {
