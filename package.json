@@ -28,7 +28,9 @@
     "pnpm": ">=11"
   },
   "dependencies": {
+    "jspdf": "4.2.1",
     "marked": "18.1.0",
+    "svg2pdf.js": "2.8.1",
     "ws": "8.22.0"
   }
 }

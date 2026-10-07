@@ -104,7 +104,7 @@ export function initRoomPage(): void {
 
       let conn: RoomConnection;
       const compositionController = compositionRoot
-        ? initCompositionGrid(compositionRoot, { send: (msg) => conn.send(msg) })
+        ? initCompositionGrid(compositionRoot, { send: (msg) => conn.send(msg) }, data.room.name)
         : null;
       const lyricsController = lyricsRoot ? initLyrics(lyricsRoot, roomId, { send: (msg) => conn.send(msg) }) : null;
       const remoteStreams = new Map<string, MediaStream>();

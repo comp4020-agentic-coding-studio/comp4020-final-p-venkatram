@@ -1,5 +1,9 @@
 # esbuild (used by Vitest) needs its postinstall to set up its native binary.
 allowBuilds:
+  # Just core-js's well-known postinstall donation banner (writes a harmless
+  # dedup-timestamp file to the OS temp dir) — verified by reading its
+  # postinstall.js before allowing.
+  core-js: true
   esbuild: true
 minimumReleaseAgeExclude:
   - '@astrojs/internal-helpers@0.12.0'

@@ -14,6 +14,7 @@ import {
 } from "../../shared/grid";
 import { CompositionPlayer } from "./composition-player";
 import { diatonicIndexToY, DURATION_LABELS, pitchToStaffNote } from "./staff-notation";
+import { exportCompositionPdf } from "./staff-pdf";
 import type { SignalSender } from "./webrtc";
 
 export interface CompositionController {
@@ -21,18 +22,23 @@ export interface CompositionController {
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-const STEP_WIDTH = 34;
-const NOTE_AREA_X = 48;
+// Twice the original size: each (step, pitch) click target is exactly
+// HALF_LINE_SPACING tall, and at the original 8px that was too thin to
+// reliably click — doubling makes every target a comfortable 16px, with the
+// SVG's own width/height attributes (not CSS) set to these units 1:1, so
+// there's no further scaling to lose precision to.
+const STEP_WIDTH = 68;
+const NOTE_AREA_X = 96;
 const NOTE_AREA_WIDTH = GRID_STEPS * STEP_WIDTH;
-const BOTTOM_LINE_Y = 104;
-const HALF_LINE_SPACING = 8;
+const BOTTOM_LINE_Y = 208;
+const HALF_LINE_SPACING = 16;
 const TOP_LINE_Y = BOTTOM_LINE_Y - 4 * HALF_LINE_SPACING * 2;
-const NOTEHEAD_RX = 5.5;
-const NOTEHEAD_RY = 4.3;
-const STEM_HEIGHT = 27;
-const VIEW_Y_OFFSET = 60; // room above the staff for ledger lines and stems
-const VIEW_HEIGHT = 200;
-const VIEW_WIDTH = NOTE_AREA_X + NOTE_AREA_WIDTH + 20;
+const NOTEHEAD_RX = 11;
+const NOTEHEAD_RY = 8.6;
+const STEM_HEIGHT = 54;
+const VIEW_Y_OFFSET = 120; // room above the staff for ledger lines and stems
+const VIEW_HEIGHT = 400;
+const VIEW_WIDTH = NOTE_AREA_X + NOTE_AREA_WIDTH + 40;
 
 const DURATION_ORDER: DurationCategory[] = [4, 3, 2, 1, 0];
 const DURATION_SYMBOLS: Record<DurationCategory, string> = { 4: "𝅝", 3: "𝅗𝅥", 2: "♩", 1: "♪", 0: "𝅘𝅥𝅯" };
@@ -41,7 +47,7 @@ function svgEl<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNameM
   return document.createElementNS(SVG_NS, tag);
 }
 
-export function initCompositionGrid(container: HTMLElement, conn: SignalSender): CompositionController {
+export function initCompositionGrid(container: HTMLElement, conn: SignalSender, roomName: string): CompositionController {
   let cells: Cell[] = [];
   let bpm = DEFAULT_BPM;
   let selectedDuration: DurationCategory = DEFAULT_DURATION;
@@ -91,32 +97,59 @@ export function initCompositionGrid(container: HTMLElement, conn: SignalSender):
   }
   durationButtons.get(selectedDuration)?.classList.add("duration-btn-active");
 
-  toolbar.append(playBtn, tempoLabel, tempoValue, durationPicker);
+  const exportBtn = document.createElement("button");
+  exportBtn.type = "button";
+  exportBtn.className = "btn secondary";
+  exportBtn.textContent = "Export PDF";
+  const exportError = document.createElement("span");
+  exportError.className = "error-text";
+
+  exportBtn.addEventListener("click", () => {
+    exportError.textContent = "";
+    exportBtn.disabled = true;
+    exportBtn.textContent = "Exporting...";
+    exportCompositionPdf(roomName, cells, bpm)
+      .catch(() => {
+        exportError.textContent = "Couldn't export the PDF — try again.";
+      })
+      .finally(() => {
+        exportBtn.disabled = false;
+        exportBtn.textContent = "Export PDF";
+      });
+  });
+
+  toolbar.append(playBtn, tempoLabel, tempoValue, durationPicker, exportBtn, exportError);
 
   // --- The staff itself ---
   const scroll = document.createElement("div");
   scroll.className = "staff-scroll";
 
   const svg = svgEl("svg");
+  // Explicit width/height (not just viewBox) so every unit above maps to
+  // exactly one screen pixel — no further scale factor for a click target's
+  // real size to get lost in.
+  svg.setAttribute("width", String(VIEW_WIDTH));
+  svg.setAttribute("height", String(VIEW_HEIGHT));
   svg.setAttribute("viewBox", `0 -${VIEW_Y_OFFSET} ${VIEW_WIDTH} ${VIEW_HEIGHT}`);
   svg.setAttribute("class", "staff-svg");
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-label", "Shared musical staff — click a position to add or remove a note");
 
-  for (const y of [40, 56, 72, 88, 104]) {
-    const line = svgEl("line");
-    line.setAttribute("class", "staff-line");
-    line.setAttribute("x1", "36");
-    line.setAttribute("x2", String(VIEW_WIDTH - 10));
-    line.setAttribute("y1", String(y));
-    line.setAttribute("y2", String(y));
-    svg.append(line);
+  for (let line = 0; line < 5; line++) {
+    const y = TOP_LINE_Y + line * HALF_LINE_SPACING * 2;
+    const el = svgEl("line");
+    el.setAttribute("class", "staff-line");
+    el.setAttribute("x1", "72");
+    el.setAttribute("x2", String(VIEW_WIDTH - 20));
+    el.setAttribute("y1", String(y));
+    el.setAttribute("y2", String(y));
+    svg.append(el);
   }
 
   const clef = svgEl("text");
   clef.setAttribute("class", "staff-clef");
-  clef.setAttribute("x", "8");
-  clef.setAttribute("y", "92");
+  clef.setAttribute("x", "16");
+  clef.setAttribute("y", "184");
   clef.textContent = "𝄞";
   svg.append(clef);
 
@@ -175,8 +208,8 @@ export function initCompositionGrid(container: HTMLElement, conn: SignalSender):
           note.ledgerSide === "below" ? BOTTOM_LINE_Y + k * HALF_LINE_SPACING * 2 : TOP_LINE_Y - k * HALF_LINE_SPACING * 2;
         const ledger = svgEl("line");
         ledger.setAttribute("class", "staff-ledger");
-        ledger.setAttribute("x1", String(x - NOTEHEAD_RX - 3));
-        ledger.setAttribute("x2", String(x + NOTEHEAD_RX + 3));
+        ledger.setAttribute("x1", String(x - NOTEHEAD_RX - 6));
+        ledger.setAttribute("x2", String(x + NOTEHEAD_RX + 6));
         ledger.setAttribute("y1", String(ledgerY));
         ledger.setAttribute("y2", String(ledgerY));
         group.append(ledger);
@@ -185,7 +218,7 @@ export function initCompositionGrid(container: HTMLElement, conn: SignalSender):
       if (note.sharp) {
         const sharp = svgEl("text");
         sharp.setAttribute("class", "staff-note-sharp");
-        sharp.setAttribute("x", String(x - NOTEHEAD_RX - 8));
+        sharp.setAttribute("x", String(x - NOTEHEAD_RX - 16));
         sharp.setAttribute("y", String(y + 3));
         sharp.textContent = "♯";
         group.append(sharp);
@@ -204,8 +237,8 @@ export function initCompositionGrid(container: HTMLElement, conn: SignalSender):
         for (let f = 0; f < note.glyph.flags; f++) {
           const flag = svgEl("path");
           flag.setAttribute("class", "staff-flag");
-          const flagY = y - STEM_HEIGHT + f * 7;
-          flag.setAttribute("d", `M ${stemX} ${flagY} q 8 2 8 10 q -4 -4 -8 -3 Z`);
+          const flagY = y - STEM_HEIGHT + f * 14;
+          flag.setAttribute("d", `M ${stemX} ${flagY} q 16 4 16 20 q -8 -8 -16 -6 Z`);
           group.append(flag);
         }
       }

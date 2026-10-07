@@ -223,6 +223,35 @@ a JSON blob and there's no production data yet to migrate. Playback
 (`composition-player.ts`) now rings each note for its actual written
 duration (crit 4's `DURATION_RELEASE_MULTIPLIERS`) instead of a flat 0.3s.
 
+## Click targets, and a downloadable PDF
+
+On top of the nav/layout restructuring
+([`f7e372f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/f7e372f)):
+two changes to the composition space.
+
+**Click targets were too thin to use.** Each (step, pitch) target was exactly
+`HALF_LINE_SPACING` tall — 8px at the original scale, rendered even smaller
+once the CSS further scaled the SVG down to an 11rem display height. That's
+well under anything comfortably clickable. Fixed by doubling every geometry
+constant (`composition-staff.ts`) and giving the SVG explicit `width`/
+`height` attributes matching its viewBox 1:1, so there's no further CSS
+scale factor for a target's real on-screen size to shrink into. Targets are
+now a genuine 16px tall.
+
+**PDF export** (`src/lib/staff-pdf.ts`, `jspdf` + `svg2pdf.js`): entirely
+client-side, for the same reason recording is — the server has no spare
+capacity on a 256MB machine for this, and doesn't need any. It builds its
+own plain black-on-white SVG rather than reusing the live, theme-colored
+one: a print document shouldn't follow the dark/light toggle, and has no
+click targets or playhead to carry over. Text in that export SVG is
+deliberately plain ASCII ("Treble", "#") rather than the live staff's
+Unicode clef/sharp glyphs (𝄞, ♯) — `svg2pdf.js` vectorizes shapes (lines,
+ellipses, paths) perfectly, but relies on jsPDF's built-in fonts for text,
+which aren't guaranteed to carry those glyphs. The notes themselves (every
+pitch and duration) are all drawn as shapes, so nothing about what was
+actually composed is lost — only the decorative clef/accidental glyphs get a
+plainer stand-in in the printed version.
+
 ## Where this leaves the final project
 
 Every feature from the brief has a first version: accounts, consent-gated
