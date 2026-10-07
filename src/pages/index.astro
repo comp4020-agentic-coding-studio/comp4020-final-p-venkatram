@@ -1,0 +1,30 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Home" description="Roundsong: a collaborative music-education platform for distance learning.">
+  <section class="card" style="margin-bottom:1.5rem;">
+    <h1 style="margin-top:0;">Sing in rounds, from anywhere.</h1>
+    <p class="muted">
+      Roundsong is a small room where a teacher or a lead voice models a phrase, and everyone else answers — lyrics
+      on screen, cameras on by consent, and a shared space to build the arrangement together. It's built for
+      call-and-response, not studio-tight sync: real internet latency makes true sample-accurate ensemble playing
+      impossible over distance, so Roundsong leans into the form that already works that way.
+    </p>
+    <p>
+      <a class="btn" href="/signup/">Create an account</a>
+      <a class="btn secondary" href="/rooms/">Browse rooms</a>
+    </p>
+  </section>
+
+  <section class="card">
+    <h2 style="margin-top:0;">What's here</h2>
+    <ul>
+      <li>Accounts, and rooms you create or join.</li>
+      <li>Camera and mic by explicit consent, with an "Original Sound" mode so singing over each other doesn't get cut by the browser's call-cleanup processing.</li>
+      <li>Lyrics you upload, with a cursor that follows along as the room's leader plays.</li>
+      <li>A shared space to compose together.</li>
+      <li>Recordings of your own sessions, and of the room's group sound.</li>
+    </ul>
+  </section>
+</Layout>

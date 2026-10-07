@@ -1,0 +1,77 @@
+/* Light (default) palette: pastel shades on a light ground. */
+:root {
+  color-scheme: light;
+  --bg: #f6f3fb;
+  --surface: #ffffff;
+  --surface-raised: #fdfbff;
+  --text: #2b2440;
+  --text-muted: #6b6480;
+  --border: #e4dff2;
+  --accent: #ff9ecb; /* pastel pink */
+  --accent-2: #9fe8d8; /* pastel mint */
+  --accent-3: #b7d4ff; /* pastel sky */
+  --accent-contrast: #2b2440;
+  --danger: #e2667a;
+  --focus-ring: #7c6fd6;
+  --shadow: 0 1px 3px rgba(43, 36, 64, 0.08);
+}
+
+/* Dark palette: neon on near-black. Applies under system dark preference... */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #050507;
+    --surface: #0c0c13;
+    --surface-raised: #13131d;
+    --text: #f3f2ff;
+    --text-muted: #9a94b8;
+    --border: #2a2240;
+    --accent: #ff2fd6;
+    --accent-2: #00f5d4;
+    --accent-3: #c6ff3d;
+    --accent-contrast: #050507;
+    --danger: #ff5577;
+    --focus-ring: #00f5d4;
+    --shadow: 0 0 18px rgba(255, 47, 214, 0.15);
+  }
+}
+
+/* ...or an explicit user choice, either direction. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #050507;
+  --surface: #0c0c13;
+  --surface-raised: #13131d;
+  --text: #f3f2ff;
+  --text-muted: #9a94b8;
+  --border: #2a2240;
+  --accent: #ff2fd6;
+  --accent-2: #00f5d4;
+  --accent-3: #c6ff3d;
+  --accent-contrast: #050507;
+  --danger: #ff5577;
+  --focus-ring: #00f5d4;
+  --shadow: 0 0 18px rgba(255, 47, 214, 0.15);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f3fb;
+  --surface: #ffffff;
+  --surface-raised: #fdfbff;
+  --text: #2b2440;
+  --text-muted: #6b6480;
+  --border: #e4dff2;
+  --accent: #ff9ecb;
+  --accent-2: #9fe8d8;
+  --accent-3: #b7d4ff;
+  --accent-contrast: #2b2440;
+  --danger: #e2667a;
+  --focus-ring: #7c6fd6;
+  --shadow: 0 1px 3px rgba(43, 36, 64, 0.08);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}

@@ -1,6 +1,7 @@
 {
-  // Covers the supplied harness (spec/, scripts/); widen `include` if your app
-  // is TypeScript and you want `pnpm typecheck` to cover it too.
+  // Covers the supplied harness (spec/, scripts/) plus the app's own
+  // TypeScript (server/, src/lib). .astro files aren't type-checked here —
+  // `astro build` catches template-breaking errors at build time.
   "compilerOptions": {
     "target": "ES2023",
     "module": "ESNext",
@@ -16,5 +17,5 @@
     "moduleDetection": "force",
     "verbatimModuleSyntax": true
   },
-  "include": ["*.ts", "spec", "scripts"]
+  "include": ["*.ts", "spec", "scripts", "server", "src/lib"]
 }

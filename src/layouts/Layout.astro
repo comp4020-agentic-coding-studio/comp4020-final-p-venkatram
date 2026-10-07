@@ -1,0 +1,49 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "A collaborative music-education platform for distance learning." } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <title>{title} · Roundsong</title>
+    <script is:inline>
+      // Applied before first paint so there's no flash of the wrong theme.
+      try {
+        var saved = localStorage.getItem("theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">Round<span class="brand-accent">song</span></a>
+      <nav class="nav">
+        <a href="/rooms/">Rooms</a>
+        <a href="/activity/">Activity</a>
+        <span id="auth-nav"></span>
+        <button type="button" class="theme-toggle" data-theme-toggle>Switch to dark</button>
+      </nav>
+    </header>
+    <main class="shell">
+      <slot />
+    </main>
+    <script>
+      import { initThemeToggle } from "../lib/theme";
+      import { renderAuthNav } from "../lib/session";
+      initThemeToggle();
+      void renderAuthNav();
+    </script>
+  </body>
+</html>

@@ -1,3 +1,7 @@
 # esbuild (used by Vitest) needs its postinstall to set up its native binary.
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - '@astrojs/internal-helpers@0.12.0'
+  - '@astrojs/markdown-satteri@0.4.3'
+  - astro@7.3.6

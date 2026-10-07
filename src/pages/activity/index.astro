@@ -1,0 +1,17 @@
+---
+import Layout from "../../layouts/Layout.astro";
+---
+
+<Layout title="Activity" description="Live server activity log.">
+  <h1>Activity</h1>
+  <p class="muted">
+    Every structured log line the server writes, live. The same stream <code>flyctl logs</code> reads on the
+    server.
+  </p>
+  <ul id="activity-list" class="card" style="list-style:none; margin:0; padding:1rem; max-height:28rem; overflow-y:auto; font-family:ui-monospace,monospace; font-size:0.85rem;">
+  </ul>
+  <script>
+    import { initActivityFeed } from "../../lib/activity";
+    initActivityFeed("activity-list");
+  </script>
+</Layout>
