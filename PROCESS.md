@@ -149,9 +149,34 @@ milliseconds.
 person's toggle reaches someone else's open session, and a third person
 joining later sees the persisted state rather than an empty grid.
 
+Lyrics upload and the karaoke cursor, on top of the composition space
+([`e862927`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/e862927)):
+line-level, not word-level — a real LRC upload (`[mm:ss.xx]text` per line,
+`shared/lyrics.ts`) gets accurate timing, a plain paste falls back to
+evenly-spaced lines rather than being refused, either way there's a cursor.
+
+The transport (play/pause/seek) is leader-driven and deliberately doesn't
+trust wall-clock comparison across machines: the server
+(`server/realtime/lyrics-transport.ts`) only ever says "position is X right
+now, playing or not," and each client anchors that to its own monotonic
+clock (`performance.now()`) the instant the message arrives, then derives
+the cursor's position locally from there. No NTP-style handshake, because
+none is needed — only relative elapsed time matters, never absolute time.
+This is also the second clause of the crit 9 decision promised earlier: like
+composition, there's no lock on who can press play — whoever acts leads for
+that moment, which fits a teaching room where any singer might need to stop
+and restart a phrase.
+
+`spec/lyrics.test.ts` checks the parts a script can: real LRC timestamps
+parse correctly, a timestamp-free paste still produces sequential lines
+instead of being rejected, an upload reaches everyone else in the room, and
+one person's play reaches another's open session. Whether the cursor is
+actually pleasant to sing along to is for the crit.
+
 ## What's next
 
-Lyrics upload and the karaoke cursor, and recording. Each lands as its own
-commit; this file gets rewritten with the next stage's reasoning and cited
-commits as that happens, per the brief's instruction to rewrite rather than
-append.
+Recording: personal (local mic/cam via MediaRecorder) and group (mixing
+local plus remote WebRTC audio through a MediaStreamAudioDestinationNode),
+both ending in a local download — cloud export is a clearly-labelled stretch
+goal, not built this pass. This file gets rewritten once more with that
+stage's reasoning and cited commits.

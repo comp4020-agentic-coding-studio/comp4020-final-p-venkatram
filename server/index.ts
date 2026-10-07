@@ -15,6 +15,7 @@ import { sendJson } from "./http-util.ts";
 import { handleActivityApi } from "./routes/activity.ts";
 import { handleAuthApi } from "./routes/auth.ts";
 import { handleRoomsApi } from "./routes/rooms.ts";
+import { handleLyricsApi } from "./routes/lyrics.ts";
 import { attachWebSocketServer } from "./ws.ts";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -24,6 +25,7 @@ const db = getDb(); // boots the schema before the first request can touch it
 
 async function handleApi(req: IncomingMessage, res: ServerResponse, path: string): Promise<boolean> {
   if (await handleAuthApi(req, res, path, db)) return true;
+  if (await handleLyricsApi(req, res, path, db)) return true;
   if (await handleRoomsApi(req, res, path, db)) return true;
   if (await handleActivityApi(req, res, path)) return true;
   return false;

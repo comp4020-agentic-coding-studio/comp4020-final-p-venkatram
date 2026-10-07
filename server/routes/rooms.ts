@@ -41,9 +41,11 @@ export async function handleRoomsApi(
     return true;
   }
 
-  const roomId = path.slice("/api/rooms/".length);
-  if (roomId && req.method === "GET") {
-    const room = getRoom(db, roomId);
+  // Exactly one segment after /api/rooms/ — not /api/rooms/<id>/lyrics or
+  // anything deeper, which belong to their own route modules.
+  const detailMatch = /^\/api\/rooms\/([^/]+)$/.exec(path);
+  if (detailMatch && req.method === "GET") {
+    const room = getRoom(db, detailMatch[1] as string);
     if (!room) sendJson(res, 404, { error: "No room with that id." });
     else sendJson(res, 200, { room });
     return true;

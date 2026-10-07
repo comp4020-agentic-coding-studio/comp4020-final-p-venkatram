@@ -12,6 +12,8 @@ import { getDb } from "./db.ts";
 import { sessionTokenFromRequest, userForToken } from "./auth.ts";
 import { getRoom, joinRoom } from "./rooms.ts";
 import { getComposition, setTempo, toggleCell } from "./compositions.ts";
+import { getLyrics } from "./lyrics.ts";
+import { getTransport, pause, play, seek } from "./realtime/lyrics-transport.ts";
 import {
   addConnection,
   broadcast,
@@ -36,8 +38,10 @@ function onConnection(ws: WebSocket, db: DatabaseSync, roomId: string, userId: s
   addConnection(roomId, conn);
   logEvent("room.join", { roomId, userId });
 
+  const lyrics = getLyrics(db, roomId) ?? { title: null, lines: [] };
   ws.send(JSON.stringify({ type: "presence.sync", users: presentUsers(roomId) }));
   ws.send(JSON.stringify({ type: "composition.sync", ...getComposition(db, roomId) }));
+  ws.send(JSON.stringify({ type: "lyrics.sync", ...lyrics, ...getTransport(roomId) }));
   broadcast(roomId, { type: "presence.join", user: { userId, displayName } }, conn);
 
   ws.on("message", (raw: Buffer) => {
@@ -102,6 +106,19 @@ function handleMessage(db: DatabaseSync, roomId: string, sender: Connection, mes
     const next = setTempo(db, roomId, Number(record.bpm));
     broadcast(roomId, { type: "composition.update", ...next });
     logEvent("composition.tempo", { roomId, userId: sender.userId, bpm: next.bpm });
+    return;
+  }
+
+  // Lyrics transport: whoever acts becomes the leader for that moment —
+  // there's no ownership check, matching the ADR's no-locking shape.
+  if (record.type === "lyrics.play") {
+    broadcast(roomId, { type: "lyrics.transport", ...play(roomId) });
+    logEvent("lyrics.play", { roomId, userId: sender.userId });
+  } else if (record.type === "lyrics.pause") {
+    broadcast(roomId, { type: "lyrics.transport", ...pause(roomId) });
+    logEvent("lyrics.pause", { roomId, userId: sender.userId });
+  } else if (record.type === "lyrics.seek") {
+    broadcast(roomId, { type: "lyrics.transport", ...seek(roomId, Number(record.positionMs)) });
   }
 }
 

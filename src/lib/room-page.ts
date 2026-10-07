@@ -4,6 +4,8 @@ import { askForMediaConsent } from "./media-consent";
 import { RoomMedia } from "./webrtc";
 import { initCompositionGrid } from "./composition-grid";
 import type { Cell } from "../../shared/grid";
+import { initLyrics } from "./lyrics";
+import type { LyricLine } from "../../shared/lyrics";
 
 interface Room {
   id: string;
@@ -71,11 +73,13 @@ export function initRoomPage(): void {
       }
 
       const compositionRoot = document.getElementById("composition-root");
+      const lyricsRoot = document.getElementById("lyrics-root");
 
       let conn: RoomConnection;
       const compositionController = compositionRoot
         ? initCompositionGrid(compositionRoot, { send: (msg) => conn.send(msg) })
         : null;
+      const lyricsController = lyricsRoot ? initLyrics(lyricsRoot, roomId, { send: (msg) => conn.send(msg) }) : null;
       const media = new RoomMedia(
         { send: (msg) => conn.send(msg) },
         {
@@ -122,6 +126,23 @@ export function initRoomPage(): void {
         onMessage: (message) => {
           if (message.type === "composition.sync" || message.type === "composition.update") {
             compositionController?.applyState({ bpm: Number(message.bpm), cells: (message.cells as Cell[]) ?? [] });
+          } else if (message.type === "lyrics.sync") {
+            lyricsController?.applySync({
+              title: (message.title as string | null) ?? null,
+              lines: (message.lines as LyricLine[]) ?? [],
+              playing: Boolean(message.playing),
+              positionMs: Number(message.positionMs) || 0,
+            });
+          } else if (message.type === "lyrics.update") {
+            lyricsController?.applyContent({
+              title: (message.title as string | null) ?? null,
+              lines: (message.lines as LyricLine[]) ?? [],
+            });
+          } else if (message.type === "lyrics.transport") {
+            lyricsController?.applyTransport({
+              playing: Boolean(message.playing),
+              positionMs: Number(message.positionMs) || 0,
+            });
           } else {
             void media.handleSignal(message);
           }
