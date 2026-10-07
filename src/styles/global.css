@@ -244,6 +244,40 @@ select {
   border-radius: 999px;
 }
 
+.composition-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.composition-grid {
+  display: grid;
+  gap: 2px;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.composition-cell {
+  aspect-ratio: 1;
+  min-width: 1.4rem;
+  border: 1px solid var(--border);
+  border-radius: 0.2rem;
+  background: var(--surface);
+  cursor: pointer;
+  padding: 0;
+}
+
+.composition-cell-active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.composition-cell-playhead {
+  box-shadow: 0 0 0 2px var(--accent-2) inset;
+}
+
 @media (max-width: 480px) {
   .site-header {
     padding: 0.75rem 1rem;

@@ -17,5 +17,5 @@
     "moduleDetection": "force",
     "verbatimModuleSyntax": true
   },
-  "include": ["*.ts", "spec", "scripts", "server", "src/lib"]
+  "include": ["*.ts", "spec", "scripts", "server", "src/lib", "shared"]
 }

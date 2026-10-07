@@ -122,9 +122,36 @@ can: the server relays an offer to the *right* peer, tagged with who sent it,
 and a third person in the same room never sees it. Real cameras and real
 peer connections are a person's judgement at the crit, not a script's.
 
+The shared composition space, on top of camera/WebRTC
+([`5dfa103`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/5dfa103)):
+a step grid (`shared/grid.ts`, deliberately shared between server and client
+so they can't disagree about its shape) using the same pentatonic-degree idea
+as crit 4's `audio.ts` — every cell lands on a scale degree, so there's no
+wrong note to place. `src/lib/composition-player.ts` adapts that same file's
+lookahead-scheduler shape (`LOOKAHEAD_MS`/`SCHEDULE_AHEAD_SEC`, scheduling
+ahead of `currentTime` rather than trusting `setInterval`'s timing) for a
+shared grid instead of one shape.
+
+This is the moment the crit 9 ADR's other half had to actually get decided:
+**the server holds the one authoritative copy of a room's composition
+(`server/compositions.ts`); a client sends intent ("toggle this cell"), the
+server applies it and broadcasts the result to everyone, sender included.**
+No client-side optimistic update, no merge step — there's only ever one
+answer to "what does the grid look like," decided in one place. Alternative
+considered: client-side optimistic updates reconciled against the server's
+broadcast (lower perceived latency on your own edits). Rejected for now — at
+small-pod scale the round-trip is already well under a second, and a single
+source of truth is a much smaller thing to reason about and debug than a
+reconciliation path, which matters more here than shaving the last
+milliseconds.
+
+`spec/composition.test.ts` checks the shape of that promise directly: one
+person's toggle reaches someone else's open session, and a third person
+joining later sees the persisted state rather than an empty grid.
+
 ## What's next
 
-The shared composition space, lyrics upload and the karaoke cursor, and
-recording. Each lands as its own commit; this file gets rewritten with the
-next stage's reasoning and cited commits as that happens, per the brief's
-instruction to rewrite rather than append.
+Lyrics upload and the karaoke cursor, and recording. Each lands as its own
+commit; this file gets rewritten with the next stage's reasoning and cited
+commits as that happens, per the brief's instruction to rewrite rather than
+append.

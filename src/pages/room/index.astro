@@ -21,6 +21,12 @@ import Layout from "../../layouts/Layout.astro";
       <span>Original Sound (no echo cancellation, noise suppression, or auto-gain — for singing together, not talking)</span>
     </label>
 
+    <section class="card">
+      <h2 style="margin-top:0;">Compose together</h2>
+      <p class="muted">Tap a cell to add or remove a note. Everyone here sees the same grid, live.</p>
+      <div id="composition-root"></div>
+    </section>
+
     <section class="card" style="max-width:24rem;">
       <h2 style="margin-top:0;">Here now</h2>
       <ul id="presence-list" style="list-style:none; padding:0; margin:0;"></ul>

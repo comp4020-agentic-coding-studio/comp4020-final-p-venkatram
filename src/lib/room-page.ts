@@ -2,6 +2,8 @@ import { requireSession } from "./session";
 import { connectToRoom, type PresentUser, type RoomConnection } from "./room-connection";
 import { askForMediaConsent } from "./media-consent";
 import { RoomMedia } from "./webrtc";
+import { initCompositionGrid } from "./composition-grid";
+import type { Cell } from "../../shared/grid";
 
 interface Room {
   id: string;
@@ -68,7 +70,12 @@ export function initRoomPage(): void {
         videoGrid.append(makeVideoTile("self", `${self.displayName} (you)`, localStream, true));
       }
 
+      const compositionRoot = document.getElementById("composition-root");
+
       let conn: RoomConnection;
+      const compositionController = compositionRoot
+        ? initCompositionGrid(compositionRoot, { send: (msg) => conn.send(msg) })
+        : null;
       const media = new RoomMedia(
         { send: (msg) => conn.send(msg) },
         {
@@ -113,7 +120,11 @@ export function initRoomPage(): void {
           media.removePeer(userId);
         },
         onMessage: (message) => {
-          void media.handleSignal(message);
+          if (message.type === "composition.sync" || message.type === "composition.update") {
+            compositionController?.applyState({ bpm: Number(message.bpm), cells: (message.cells as Cell[]) ?? [] });
+          } else {
+            void media.handleSignal(message);
+          }
         },
       });
 
