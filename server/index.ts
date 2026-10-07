@@ -2,49 +2,27 @@
 // (from a later commit) the WebSocket — all on one port, because that's the
 // whole of what the course's one 256MB Fly machine gives this app to work
 // with. node:http + a hand-rolled router rather than a framework, to keep the
-// resident footprint small.
+// resident footprint small. Each feature's routes live in routes/*.ts;
+// this file just dispatches to them in turn.
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getDb } from "./db.ts";
-import { logEvent, recentEvents, subscribeToEvents } from "./log.ts";
+import { logEvent } from "./log.ts";
 import { renderReadmePage } from "./readme.ts";
 import { serveStatic } from "./static.ts";
+import { sendJson } from "./http-util.ts";
+import { handleActivityApi } from "./routes/activity.ts";
+import { handleAuthApi } from "./routes/auth.ts";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const DIST = join(ROOT, "dist");
 const PORT = Number(process.env.PORT ?? 8080);
-
-function sendJson(res: ServerResponse, status: number, body: unknown): void {
-  const payload = JSON.stringify(body);
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
-  res.end(payload);
-}
-
-function streamActivity(res: ServerResponse): void {
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-  });
-  for (const entry of recentEvents()) {
-    res.write(`data: ${JSON.stringify(entry)}\n\n`);
-  }
-  const unsubscribe = subscribeToEvents((entry) => {
-    res.write(`data: ${JSON.stringify(entry)}\n\n`);
-  });
-  res.on("close", unsubscribe);
-}
+const db = getDb(); // boots the schema before the first request can touch it
 
 async function handleApi(req: IncomingMessage, res: ServerResponse, path: string): Promise<boolean> {
-  if (path === "/api/activity/recent" && req.method === "GET") {
-    sendJson(res, 200, { events: recentEvents() });
-    return true;
-  }
-  if (path === "/api/activity/stream" && req.method === "GET") {
-    streamActivity(res);
-    return true;
-  }
+  if (await handleAuthApi(req, res, path, db)) return true;
+  if (await handleActivityApi(req, res, path)) return true;
   return false;
 }
 
@@ -77,9 +55,11 @@ async function requestListener(req: IncomingMessage, res: ServerResponse): Promi
   res.end("Not found");
 }
 
-getDb(); // boots the schema before the first request can touch it
 const server = createServer((req, res) => {
-  void requestListener(req, res);
+  requestListener(req, res).catch((err: unknown) => {
+    console.error(err);
+    if (!res.headersSent) sendJson(res, 500, { error: "internal error" });
+  });
 });
 server.listen(PORT, "0.0.0.0", () => {
   logEvent("server.start", { port: PORT });

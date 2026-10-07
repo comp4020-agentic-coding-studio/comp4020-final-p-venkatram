@@ -49,20 +49,32 @@ that moment is immaterial — it's not a cost worth paying a second runtime for.
 
 ## What's built
 
-The foundation: the dark (black + neon) / light (pastel) theme system
-(`src/styles/theme.css`, toggled and persisted client-side), the Node server
-skeleton with its SQLite migration runner, `/readme/` rendered from this file
-with the site's own theme CSS inlined (replacing the template's `sed`-based
-placeholder), and structured JSON logging to stdout with an in-memory ring
-buffer behind both an `/api/activity/stream` SSE endpoint and the `/activity/`
-page — this last pair is a deliberate head start on crit 10's logging
-requirement rather than something bolted on the week it's due.
+The foundation ([`7fc353a`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/7fc353a)):
+the dark (black + neon) / light (pastel) theme system (`src/styles/theme.css`,
+toggled and persisted client-side), the Node server skeleton with its SQLite
+migration runner, `/readme/` rendered from this file with the site's own
+theme CSS inlined (replacing the template's `sed`-based placeholder), and
+structured JSON logging to stdout with an in-memory ring buffer behind both an
+`/api/activity/stream` SSE endpoint and the `/activity/` page — this last pair
+is a deliberate head start on crit 10's logging requirement rather than
+something bolted on the week it's due.
+
+Accounts: email/password signup and login, `node:crypto` scrypt password
+hashing (so no native dependency the Alpine image would need a compiler for),
+and cookie sessions backed by a `sessions` table (`server/auth.ts`,
+`server/migrations/0001_users.sql`). Deliberately minimal — no password
+reset, no email verification — because the brief doesn't ask for an
+account-recovery product, it asks for rooms people can get into. `/rooms/`
+is the first page that actually requires a session, via a client-side
+`requireSession()` check (`src/lib/session.ts`): Astro's static output means
+every page is the same HTML for everyone, so "is someone logged in" is
+answered after load, by asking the server, on every page that needs to know.
 
 ## What's next
 
-Accounts (signup/login/sessions), then real-time rooms with WebSocket
-presence and the crit 9 decision about simultaneous use, then camera consent
-and the "Original Sound" toggle, the shared composition space, lyrics upload
-and the karaoke cursor, and recording. Each lands as its own commit; this
-file gets rewritten with the next stage's reasoning and cited commits as that
-happens, per the brief's instruction to rewrite rather than append.
+Real-time rooms with WebSocket presence and the crit 9 decision about
+simultaneous use, then camera consent and the "Original Sound" toggle, the
+shared composition space, lyrics upload and the karaoke cursor, and
+recording. Each lands as its own commit; this file gets rewritten with the
+next stage's reasoning and cited commits as that happens, per the brief's
+instruction to rewrite rather than append.
