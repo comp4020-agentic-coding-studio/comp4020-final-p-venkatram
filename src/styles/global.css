@@ -1,5 +1,46 @@
 @import "./theme.css";
 
+/* Self-hosted (not on Google Fonts) — SIL OFL licensed, from VMware's
+   Clarity City project (/public/fonts/LICENSE.txt carries the full license
+   text alongside the font files, as the OFL requires on redistribution).
+   font-display: swap so text renders immediately in the fallback stack
+   rather than staying invisible while these load. */
+@font-face {
+  font-family: "Clarity City";
+  src: url("/fonts/ClarityCity-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Clarity City";
+  src: url("/fonts/ClarityCity-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Clarity City";
+  src: url("/fonts/ClarityCity-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Clarity City";
+  src: url("/fonts/ClarityCity-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Clarity City";
+  src: url("/fonts/ClarityCity-ExtraBold.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -12,6 +53,7 @@ body {
 
 body {
   font-family:
+    "Clarity City",
     system-ui,
     -apple-system,
     "Segoe UI",
@@ -77,31 +119,57 @@ a {
 /* Fixed dark scrim regardless of site theme — the photo and its text need
    to stay legible whether the rest of the page is in light or dark mode.
    Positioned absolutely (not in normal flow) so it spans exactly the same
-   box as the image rather than forcing .hero taller than its aspect-ratio. */
+   box as the image rather than forcing .hero taller than its aspect-ratio.
+   Why, How and What all stack in this one space now (top-anchored, not
+   bottom-anchored), so the wash is a flat, even darkness rather than a
+   top-to-bottom gradient — text can land anywhere in the box and stay
+   legible, not just at one edge of it. overflow-y covers the case where all
+   three sections together are taller than the image at very narrow widths. */
 .hero-overlay {
   position: absolute;
   inset: 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 3rem 1.5rem 2rem;
-  background: linear-gradient(180deg, rgba(10, 8, 20, 0.15) 0%, rgba(10, 8, 20, 0.85) 100%);
+  justify-content: flex-start;
+  gap: 1.1rem;
+  padding: 1.75rem 1.5rem;
+  background: rgba(8, 6, 16, 0.68);
   overflow-y: auto;
 }
 
+.hero-section {
+  max-width: 42rem;
+}
+
 .hero-overlay h1 {
-  margin: 0;
+  margin: 0 0 0.6rem;
   color: #fff;
-  font-size: 1.8rem;
-  max-width: 38rem;
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.hero-overlay h2 {
+  margin: 0 0 0.4rem;
+  color: #fff;
+  font-size: 1.15rem;
 }
 
 .hero-overlay p {
   color: rgba(255, 255, 255, 0.92);
-  max-width: 42rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.92rem;
+}
+
+.hero-overlay ul {
   margin: 0;
+  padding-left: 1.2rem;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.88rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 .hero-overlay .btn.secondary {
@@ -110,21 +178,62 @@ a {
 }
 
 .hero-credit {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+/* Real counts (server/routes/stats.ts), not the "10K+" placeholder kind —
+   the layout pattern (three metrics in a row) is borrowed, the numbers
+   underneath it aren't. */
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1.25rem 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
 @media (max-width: 480px) {
-  /* The full-image aspect-ratio box is too short here to fit the overlay's
-     text comfortably (a 1.5:1 photo at a ~340px-wide phone is only ~225px
-     tall) — on narrow screens only, trade "whole image visible" for
-     "readable hero text" and let object-fit: cover crop it instead. */
+  .stats-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  /* The full-image aspect-ratio box is too short here to fit three stacked
+     sections' worth of text (a 1.5:1 photo at a ~340px-wide phone is only
+     ~225px tall) — on narrow screens only, trade "whole image visible" for
+     a readable hero and let object-fit: cover crop the photo instead.
+     overflow-y: auto on .hero-overlay is still the final safety net if even
+     this isn't enough room. */
   .hero {
     aspect-ratio: unset;
-    min-height: 18rem;
+    min-height: 28rem;
   }
   .hero-overlay h1 {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
   }
 }
 
@@ -140,9 +249,9 @@ a {
 }
 
 .brand {
-  font-weight: 700;
-  font-size: 1.1rem;
-  letter-spacing: 0.02em;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.01em;
   text-decoration: none;
   color: var(--text);
 }

@@ -16,6 +16,7 @@ import { handleActivityApi } from "./routes/activity.ts";
 import { handleAuthApi } from "./routes/auth.ts";
 import { handleRoomsApi } from "./routes/rooms.ts";
 import { handleLyricsApi } from "./routes/lyrics.ts";
+import { handleStatsApi } from "./routes/stats.ts";
 import { attachWebSocketServer } from "./ws.ts";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -27,6 +28,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, path: string
   if (await handleAuthApi(req, res, path, db)) return true;
   if (await handleLyricsApi(req, res, path, db)) return true;
   if (await handleRoomsApi(req, res, path, db)) return true;
+  if (await handleStatsApi(req, res, path, db)) return true;
   if (await handleActivityApi(req, res, path)) return true;
   return false;
 }

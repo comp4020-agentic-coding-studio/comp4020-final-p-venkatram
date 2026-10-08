@@ -303,3 +303,25 @@ only: the product this app is — call-and-response, consent-gated,
 latency-honest — is unchanged, and the repo name, Fly app name, and deploy
 URL stay `comp4020-final-p-venkatram` / `*.fly.dev`, which the course's CI
 and cutoff sweep are fixed to.
+
+## A scope decision worth recording
+
+A reference site was shared (a Wix mockup of a full social platform: member
+profiles, DMs, group discussions, a portfolio showcase, "10K+ sessions"
+style fabricated stats, Shop and Events pages). That version is explicitly
+the shape the final project brief asks *not* to build — general-purpose,
+not small or single-purpose — and it would need real resources
+(profiles, messaging, discovery) this app's one 256MB machine isn't scoped
+for. Decision: keep the room-based tool as the actual submission, and take
+only the *visual* energy from that reference — not its feature set.
+
+Concretely, on top of ([`88c241f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/88c241f)):
+- **Clarity City** (`public/fonts/`, SIL OFL licensed, VMware's Clarity
+  Design System font — self-hosted since it isn't on Google Fonts, with its
+  license text kept alongside it as the OFL requires), applied site-wide,
+  with bolder heading weights for more visual punch.
+- A **stats strip** on the landing page (`server/routes/stats.ts`,
+  `src/lib/landing-stats.ts`) borrowing the reference's "three metrics in a
+  row" layout pattern, but wired to real, honest aggregate counts (rooms
+  created, notes composed, lyric sheets shared) — no fabricated numbers, no
+  identifying content (no room names) in a public, no-session endpoint.

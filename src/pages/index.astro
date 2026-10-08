@@ -15,43 +15,65 @@ import heroBand from "../assets/hero-band.jpg";
       loading="eager"
     />
     <div class="hero-overlay">
-      <h1>Distance shouldn't mean nobody sings together.</h1>
-      <p>
-        Real internet latency makes playing in perfect sync impossible over distance — no app changes that.
-        WaveForge doesn't pretend otherwise: it's built for call-and-response, the way a singing lesson or a round
-        already works, so a teacher or a lead voice can model a phrase and everyone else can answer, from wherever
-        they are.
-      </p>
-      <p>
-        <a class="btn" href="/signup/">Create an account</a>
-        <a class="btn secondary" href="/login/">Log in</a>
-      </p>
+      <div class="hero-section">
+        <h1>Distance shouldn't mean nobody sings together.</h1>
+        <p>
+          Real internet latency makes playing in perfect sync impossible over distance — no app changes that.
+          WaveForge doesn't pretend otherwise: it's built for call-and-response, the way a singing lesson or a round
+          already works, so a teacher or a lead voice can model a phrase and everyone else can answer, from wherever
+          they are.
+        </p>
+        <p>
+          <a class="btn" href="/signup/">Create an account</a>
+          <a class="btn secondary" href="/login/">Log in</a>
+        </p>
+      </div>
+
+      <div class="hero-section">
+        <h2>How it works</h2>
+        <p>
+          One person leads — a phrase, a line, a verse — and the room answers in turn, or layers a part on top once
+          they've heard it. Everything else follows from that one decision.
+        </p>
+        <ul>
+          <li>Call-and-response, not synced playback: one leader at a time, never a race to be first.</li>
+          <li>Camera and mic only turn on when you say so — a consent step every time you join a room, not just the first.</li>
+          <li>"Original Sound" is off by default and raw when you ask for it: no echo cancellation or noise suppression fighting two people singing together.</li>
+          <li>The server holds the one true copy of what the room looks like — a composition edit or a lyrics cue reaches everyone the same way, not whoever's connection happened to be fastest.</li>
+        </ul>
+      </div>
+
+      <div class="hero-section">
+        <h2>What's here</h2>
+        <ul>
+          <li>Accounts, and rooms you create or join by link.</li>
+          <li>Camera and mic by explicit consent, with Original Sound for singing over each other.</li>
+          <li>Lyrics you upload, with a karaoke-style cursor that follows whoever's leading.</li>
+          <li>A shared composition space — real staff notation, not a grid of buttons — with one-click PDF export of what you wrote.</li>
+          <li>Recordings of your own session, and of the room's group sound, saved straight to your device.</li>
+        </ul>
+      </div>
+
       <p class="hero-credit">Photo: Caleb George / Unsplash</p>
     </div>
   </section>
 
-  <section class="card" style="margin-bottom:1.5rem;">
-    <h2 style="margin-top:0;">How it works</h2>
-    <p class="muted">
-      One person leads — a phrase, a line, a verse — and the room answers in turn, or layers a part on top once
-      they've heard it. Everything else follows from that one decision.
-    </p>
-    <ul>
-      <li>Call-and-response, not synced playback: one leader at a time, never a race to be first.</li>
-      <li>Camera and mic only turn on when you say so — a consent step every time you join a room, not just the first.</li>
-      <li>"Original Sound" is off by default and raw when you ask for it: no echo cancellation or noise suppression fighting two people singing together.</li>
-      <li>The server holds the one true copy of what the room looks like — a composition edit or a lyrics cue reaches everyone the same way, not whoever's connection happened to be fastest.</li>
-    </ul>
+  <section class="stats-strip" aria-label="WaveForge activity so far">
+    <div class="stat">
+      <span class="stat-number" id="stat-rooms">—</span>
+      <span class="stat-label">rooms created</span>
+    </div>
+    <div class="stat">
+      <span class="stat-number" id="stat-notes">—</span>
+      <span class="stat-label">notes composed</span>
+    </div>
+    <div class="stat">
+      <span class="stat-number" id="stat-lyrics">—</span>
+      <span class="stat-label">lyric sheets shared</span>
+    </div>
   </section>
-
-  <section class="card">
-    <h2 style="margin-top:0;">What's here</h2>
-    <ul>
-      <li>Accounts, and rooms you create or join by link.</li>
-      <li>Camera and mic by explicit consent, with Original Sound for singing over each other.</li>
-      <li>Lyrics you upload, with a karaoke-style cursor that follows whoever's leading.</li>
-      <li>A shared composition space — real staff notation, not a grid of buttons — with one-click PDF export of what you wrote.</li>
-      <li>Recordings of your own session, and of the room's group sound, saved straight to your device.</li>
-    </ul>
-  </section>
+  <script>
+    import { initLandingStats } from "../lib/landing-stats";
+    initLandingStats();
+  </script>
 </Layout>
