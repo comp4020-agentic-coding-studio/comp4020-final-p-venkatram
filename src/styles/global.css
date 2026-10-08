@@ -385,6 +385,10 @@ a {
   letter-spacing: 0.01em;
   text-decoration: none;
   color: var(--text);
+  /* Stays pinned to the right whether or not the hamburger button (hidden
+     for a logged-out visitor) is present before it — space-between alone
+     would otherwise left-align it when it's the header's only child. */
+  margin-left: auto;
 }
 
 .brand .brand-accent {

@@ -473,3 +473,16 @@ runtime — good enough for an ambient detail, and keeps this a static page
 needing no JS just to draw it) so the row doesn't pulse in lockstep.
 `aria-hidden` and `pointer-events: none` throughout, and it goes still under
 `prefers-reduced-motion` rather than animating regardless.
+
+## Hamburger menu: signed-in visitors only
+
+On top of ([`0bddb35`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/0bddb35)):
+the hamburger button starts `hidden` in `Layout.astro`'s markup now, and
+`src/lib/session.ts`'s `renderAuthNav` — already the one place on every page
+that knows the session state — is the only thing that reveals it, for a
+signed-in visitor. `/activity/` stays reachable by direct link either way;
+it just isn't offered in the menu to someone not signed in. The brand mark
+picked up `margin-left: auto` alongside this, so it stays pinned to the
+header's right edge whether or not the hamburger sits before it — without
+that, `justify-content: space-between` would left-align the brand on its own
+once the hamburger disappears.
