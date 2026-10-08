@@ -95,23 +95,21 @@ a {
   padding: 1rem 1.25rem 3rem;
 }
 
+/* Spans the content column (.shell's own side padding is the "margin" around
+   it, not a second gutter on top of that) and fills almost the full screen
+   height — a near-fullscreen hero, leaving a fixed 1-inch gap at the very
+   bottom of the viewport. 6rem in the calc is the header plus .shell's own
+   top padding plus this box's top margin — everything that sits above the
+   hero and eats into that same 100vh budget. Because the box's shape is now
+   dictated by the viewport rather than the photo's own ratio, the image is
+   cover-cropped to fill it (see .hero-image) rather than shown in full. */
 .hero {
   position: relative;
   border-radius: 0.75rem;
   overflow: hidden;
-  margin-top: 0.5rem;
-  margin-bottom: 1.5rem;
-  /* The source photo's own shape (3123x2082), so the box is always exactly
-     tall enough for the whole image at full width — nothing cropped out. */
-  aspect-ratio: 3123 / 2082;
-}
-
-/* The stats strip only shows for signed-in visitors (landing-stats.ts) — for
-   everyone else it's the last thing on the page, so the hero's own bottom
-   margin would stack with .shell's bottom padding into an oddly large gap
-   at the very end of an otherwise short page. Collapse it in that case. */
-.hero:has(+ .stats-strip[hidden]) {
-  margin-bottom: 0;
+  margin: 0.5rem 0 0;
+  height: calc(100vh - 6rem - 1in);
+  min-height: 18rem;
 }
 
 .hero-image {
@@ -119,8 +117,9 @@ a {
   inset: 0;
   width: 100%;
   height: 100%;
-  /* object-fit here is really just a safety net: since .hero's own
-     aspect-ratio already matches the image exactly, nothing gets cropped. */
+  /* .hero's height is viewport-driven now, not the photo's own ratio, so
+     this crops to fill whatever shape results rather than ever leaving a
+     gap or distorting the image. */
   object-fit: cover;
   z-index: 0;
 }
@@ -129,17 +128,18 @@ a {
    to stay legible whether the rest of the page is in light or dark mode.
    Positioned absolutely (not in normal flow) so it spans exactly the same
    box as the image rather than forcing .hero taller than its aspect-ratio.
-   Top-aligned: headline and CTA stay put, only the fade-stage between them
-   cycles, so the whole block is compact and stable rather than needing to
-   stack or scroll. */
+   Centered, both axes: everything (headline, slide, CTA, credit) stacks as
+   one compact, centered block near the top. */
 .hero-overlay {
   position: absolute;
   inset: 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   justify-content: flex-start;
-  padding: 2rem 1.75rem;
+  padding: 1.5rem;
   background: linear-gradient(180deg, rgba(8, 6, 16, 0.3) 0%, rgba(8, 6, 16, 0.82) 100%);
   overflow-y: auto;
 }
@@ -149,12 +149,12 @@ a {
    bigger beat (reader to action); CTA to the credit line is tight again,
    since the credit is a footnote attached to the CTA, not its own section. */
 .hero-overlay h1 {
-  margin: 0 0 1rem;
+  margin: 0 0 0.9rem;
   color: #fff;
-  font-size: 2.3rem;
+  font-size: 2.2rem;
   font-weight: 800;
   letter-spacing: -0.01em;
-  max-width: 38rem;
+  max-width: 34rem;
 }
 
 /* The rotating stage: slides are stacked on top of each other (absolute, same
@@ -165,8 +165,9 @@ a {
    content underneath changes. */
 .hero-fade-stage {
   position: relative;
-  min-height: 8rem;
-  margin-bottom: 1.5rem;
+  width: 100%;
+  min-height: 6rem;
+  margin-bottom: 1rem;
 }
 
 /* A left-to-right wipe: clipping the right edge (not the left) means the
@@ -175,9 +176,16 @@ a {
    one is swept away the same direction — both animate the same clip-path
    edge, so with the incoming slide on top (hero-carousel.ts) it reads as
    one motion, not two. */
+/* A flex column, centered, rather than relying on individual margin: auto
+   on each child — every slide's content (whether it's a heading-plus-list or
+   just a paragraph) centers the same way without repeating itself. */
 .hero-slide {
   position: absolute;
   inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   clip-path: inset(0 100% 0 0);
   pointer-events: none;
   transition: clip-path 1.8s ease;
@@ -189,24 +197,27 @@ a {
 }
 
 .hero-slide h2 {
-  margin: 0 0 0.4rem;
+  margin: 0 0 0.5rem;
   color: #fff;
-  font-size: 1.15rem;
+  font-size: 1.4rem;
 }
 
 .hero-slide p {
   margin: 0;
   color: rgba(255, 255, 255, 0.92);
-  font-size: 0.92rem;
-  max-width: 38rem;
+  font-size: 1.05rem;
+  max-width: 32rem;
 }
 
+/* No bullet markers — a left-indented list reads oddly once centered, so
+   each line is just its own centered row instead. */
 .hero-slide ul {
   margin: 0;
-  padding-left: 1.2rem;
+  padding: 0;
+  list-style: none;
   color: rgba(255, 255, 255, 0.88);
-  font-size: 0.88rem;
-  max-width: 38rem;
+  font-size: 1rem;
+  max-width: 32rem;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -218,20 +229,20 @@ a {
   }
 }
 
-/* Pinned to the bottom of the hero (margin-top: auto, the classic flexbox
-   push) and centered — the action, not just another line of text. */
+/* Right after the fade-stage, not pinned to the bottom — with the hero this
+   much shorter now, everything (headline, slide, buttons) needs to read as
+   one compact group near the top, not spread across the box. */
 .hero-cta {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: auto;
   margin-bottom: 0.6rem;
 }
 
 .hero-cta .btn {
-  padding: 0.95rem 2rem;
-  font-size: 1.05rem;
+  padding: 0.7rem 1.6rem;
+  font-size: 0.98rem;
   font-weight: 700;
 }
 
@@ -259,6 +270,7 @@ a {
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   text-align: center;
+  margin-top: 1.5rem;
   margin-bottom: 1.5rem;
 }
 
@@ -294,21 +306,15 @@ a {
 }
 
 @media (max-width: 480px) {
-  /* The full-image aspect-ratio box is too short here to fit the headline,
-     one rotating slide and the CTA buttons comfortably (a 1.5:1 photo at a
-     ~340px-wide phone is only ~225px tall) — on narrow screens only, trade
-     "whole image visible" for a readable hero and let object-fit: cover
-     crop the photo instead. overflow-y: auto on .hero-overlay is still the
-     final safety net if even this isn't enough room. */
-  .hero {
-    aspect-ratio: unset;
-    min-height: 24rem;
-  }
+  /* On a short landscape phone, 100vh - 6rem - 1in can get very small — the
+     min-height floor on .hero already covers that, this is just the text
+     inside shrinking to fit a narrow phone screen regardless of its height.
+     overflow-y: auto on .hero-overlay is the final safety net either way. */
   .hero-overlay h1 {
-    font-size: 1.6rem;
+    font-size: 1.4rem;
   }
   .hero-fade-stage {
-    min-height: 7rem;
+    min-height: 5.5rem;
   }
 }
 
@@ -587,6 +593,48 @@ select {
   background: rgba(0, 0, 0, 0.55);
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
+}
+
+.video-tile-fullscreen {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 1.8rem;
+  height: 1.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0.4rem;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.video-tile-fullscreen:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.video-tile:fullscreen {
+  aspect-ratio: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-tile:fullscreen video {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+}
+
+.media-controls {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0 0 1rem;
 }
 
 .composition-toolbar {

@@ -19,6 +19,7 @@ import Layout from "../../layouts/Layout.astro";
         <div class="collab-layout">
           <div class="collab-main">
             <div id="video-grid" class="video-grid"></div>
+            <div id="media-controls-root"></div>
 
             <label class="field" style="flex-direction:row; align-items:center; gap:0.5rem;">
               <input type="checkbox" id="original-sound-toggle" />
@@ -44,7 +45,7 @@ import Layout from "../../layouts/Layout.astro";
 
       <section id="panel-record" class="room-panel" hidden>
         <div class="card">
-          <h2 style="margin-top:0;">Recording</h2>
+          <h2 style="margin-top:0;">Recordings library</h2>
           <div id="recording-root"></div>
         </div>
       </section>

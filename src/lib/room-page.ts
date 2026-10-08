@@ -7,6 +7,7 @@ import type { Cell } from "../../shared/grid";
 import { initLyrics } from "./lyrics";
 import type { LyricLine } from "../../shared/lyrics";
 import { initRecordingPanel } from "./recording-panel";
+import { initMediaControls } from "./media-controls";
 
 interface Room {
   id: string;
@@ -58,7 +59,18 @@ function makeVideoTile(id: string, label: string, stream: MediaStream, muted: bo
   const caption = document.createElement("span");
   caption.className = "video-tile-label";
   caption.textContent = label;
-  tile.append(video, caption);
+
+  const fullscreenBtn = document.createElement("button");
+  fullscreenBtn.type = "button";
+  fullscreenBtn.className = "video-tile-fullscreen";
+  fullscreenBtn.setAttribute("aria-label", `Fullscreen ${label}`);
+  fullscreenBtn.textContent = "⛶";
+  fullscreenBtn.addEventListener("click", () => {
+    if (document.fullscreenElement === tile) void document.exitFullscreen();
+    else void tile.requestFullscreen();
+  });
+
+  tile.append(video, caption, fullscreenBtn);
   return tile;
 }
 
@@ -97,6 +109,11 @@ export function initRoomPage(): void {
 
       if (localStream && videoGrid) {
         videoGrid.append(makeVideoTile("self", `${self.displayName} (you)`, localStream, true));
+      }
+
+      const mediaControlsRoot = document.getElementById("media-controls-root");
+      if (localStream && mediaControlsRoot) {
+        initMediaControls(mediaControlsRoot, localStream);
       }
 
       const compositionRoot = document.getElementById("composition-root");

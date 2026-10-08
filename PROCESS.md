@@ -382,3 +382,41 @@ in order:
   `text-decoration: none`, so every button-as-link across the whole site
   (not just the hero) has been quietly underlined this whole time. Fixed
   globally, not just here.
+
+## Hero sizing, back and forth, and a landing on viewport-height
+
+Three more rounds on the hero's size, each a real reversal of the one
+before it, worth recording honestly rather than smoothing over:
+
+1. Capped at `max-width: 34rem` and centered, so the whole thing fit in
+   view on load without scrolling.
+2. Reverted — asked to be big again, "covering the screen with margins."
+   Back to spanning the content column, centered text re-enlarged to match.
+3. Landed on **sizing by viewport height directly**: `.hero`'s height is
+   `calc(100vh - 6rem - 1in)` — 6rem covers everything that sits above it
+   and shares the same 100vh budget (the header, `.shell`'s top padding,
+   the hero's own top margin), 1in is the explicit gap asked for at the
+   bottom of the screen. This finally reconciles "big" with "everything
+   visible on load": the hero *is* the first screen, sized to it directly,
+   rather than sized by content and hoping it happens to fit.
+
+A real consequence of that last move: the box's shape is now dictated by
+the viewport, not the photo's own aspect ratio, so the image is
+cover-cropped to fill it rather than shown in full — the "show the entire
+image, nothing cropped" decision from earlier in this file no longer holds,
+superseded by this explicit instruction.
+
+## Room controls: mute, camera off, fullscreen — and a rename
+
+Three real functional gaps in the Collaboration Room, not styling:
+
+- **Mute mic / turn camera off** (`src/lib/media-controls.ts`): toggles
+  `MediaStreamTrack.enabled` on the local stream's tracks, the same
+  approach as the Original Sound toggle — no renegotiation, the same
+  tracks stay attached to every peer connection throughout, a disabled
+  track just sends silence or a black frame.
+- **Fullscreen**, per video tile (`room-page.ts`'s `makeVideoTile`): the
+  Fullscreen API on the tile itself, so the label and the fullscreen
+  button's own corner position still make sense full-screen.
+- **"Recording" → "Recordings library"**, the room-nav label and panel
+  heading, for clarity about what that panel actually holds.
