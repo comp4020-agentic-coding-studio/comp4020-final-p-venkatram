@@ -291,3 +291,15 @@ account" (plus a "Browse rooms" link that silently redirected an
 unauthenticated visitor to `/login/` anyway) — no obvious way for a
 returning user to just log in. Replaced with explicit "Create an account" /
 "Log in" buttons.
+
+## Renamed to WaveForge
+
+([`46f62eb`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/46f62eb)
+also carries this, alongside the hero aspect-ratio fix above — both were
+in flight together.) Every "Roundsong" reference across the README, this
+file, `CLAUDE.md`, page titles/descriptions, the brand mark, and generated
+filenames (recordings, the composition PDF) is now "WaveForge." Cosmetic
+only: the product this app is — call-and-response, consent-gated,
+latency-honest — is unchanged, and the repo name, Fly app name, and deploy
+URL stay `comp4020-final-p-venkatram` / `*.fly.dev`, which the course's CI
+and cutoff sweep are fixed to.
