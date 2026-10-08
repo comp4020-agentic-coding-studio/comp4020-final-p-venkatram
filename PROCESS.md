@@ -345,3 +345,10 @@ Also: the stats strip only reveals itself to a signed-in visitor now
 "small, honest" framing, and every value falls back to `0` rather than ever
 rendering the literal string "undefined" if a field were ever missing from
 the response.
+
+Two quick follow-ups on top of ([`4371c21`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/4371c21)):
+the cross-fade became a "clarify" transition instead — the incoming slide
+starts blurred and comes into focus, the outgoing one softens as it leaves
+(`filter: blur()` paired with `opacity`, still a plain CSS transition, still
+skipped under `prefers-reduced-motion`) — and the whole overlay block moved
+from vertically centered to top-aligned within the photo.
