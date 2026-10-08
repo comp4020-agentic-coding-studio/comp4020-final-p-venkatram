@@ -352,3 +352,33 @@ starts blurred and comes into focus, the outgoing one softens as it leaves
 (`filter: blur()` paired with `opacity`, still a plain CSS transition, still
 skipped under `prefers-reduced-motion`) — and the whole overlay block moved
 from vertically centered to top-aligned within the photo.
+
+## Hero, several more iterations
+
+On top of ([`2d8fc26`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/2d8fc26)),
+in order:
+
+- The "clarify" blur became a **wipe** instead — `clip-path: inset()`
+  animated on the right edge so the reveal sweeps strictly left-to-right
+  (clipping the *left* edge, tried first, actually sweeps right-to-left —
+  worth remembering which edge produces which direction), slowed to 1.8s.
+- The wipe became **sequential rather than simultaneous**:
+  `src/lib/hero-carousel.ts` now waits for the outgoing slide's own
+  `transitionend` event before starting the incoming one, instead of
+  guessing a duration in JS that could drift from the CSS value. The
+  earlier "bump z-index so the incoming slide paints on top" trick is gone
+  — with no overlap between outgoing and incoming, there's nothing for it
+  to fix anymore.
+- A **spacing/cohesion pass**: the headline-to-CTA rhythm is now deliberate
+  margins rather than one uniform flex `gap` (tight between the headline
+  and its supporting text, a bigger beat before the CTA, tight again before
+  the credit line) — and `.hero:has(+ .stats-strip[hidden])` collapses the
+  hero's own bottom margin for anonymous visitors, so the page doesn't end
+  in an oversized empty gap when the stats strip (the only other thing on
+  the page) isn't shown.
+- The CTA buttons are now **centered, pinned to the bottom** of the hero
+  (`margin-top: auto`, the standard flexbox push) and **bigger** — and a
+  real bug fix alongside them: `.btn` never actually set
+  `text-decoration: none`, so every button-as-link across the whole site
+  (not just the hero) has been quietly underlined this whole time. Fixed
+  globally, not just here.

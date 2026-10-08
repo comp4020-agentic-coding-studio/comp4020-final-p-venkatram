@@ -99,10 +99,19 @@ a {
   position: relative;
   border-radius: 0.75rem;
   overflow: hidden;
+  margin-top: 0.5rem;
   margin-bottom: 1.5rem;
   /* The source photo's own shape (3123x2082), so the box is always exactly
      tall enough for the whole image at full width — nothing cropped out. */
   aspect-ratio: 3123 / 2082;
+}
+
+/* The stats strip only shows for signed-in visitors (landing-stats.ts) — for
+   everyone else it's the last thing on the page, so the hero's own bottom
+   margin would stack with .shell's bottom padding into an oddly large gap
+   at the very end of an otherwise short page. Collapse it in that case. */
+.hero:has(+ .stats-strip[hidden]) {
+  margin-bottom: 0;
 }
 
 .hero-image {
@@ -130,47 +139,52 @@ a {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 1.25rem;
   padding: 2rem 1.75rem;
   background: linear-gradient(180deg, rgba(8, 6, 16, 0.3) 0%, rgba(8, 6, 16, 0.82) 100%);
   overflow-y: auto;
 }
 
+/* A deliberate rhythm rather than one uniform gap: headline to supporting
+   text is a tight, continuous relationship; supporting text to the CTA is a
+   bigger beat (reader to action); CTA to the credit line is tight again,
+   since the credit is a footnote attached to the CTA, not its own section. */
 .hero-overlay h1 {
-  margin: 0;
+  margin: 0 0 1rem;
   color: #fff;
-  font-size: 1.7rem;
+  font-size: 2.3rem;
   font-weight: 800;
   letter-spacing: -0.01em;
   max-width: 38rem;
 }
 
 /* The rotating stage: slides are stacked on top of each other (absolute, same
-   box) and cross-fade via opacity (src/lib/hero-carousel.ts toggles
-   .is-active) — min-height is sized for the longest slide so nothing jumps
-   when the content underneath changes. */
+   box) and transition via clip-path (src/lib/hero-carousel.ts toggles
+   .is-active) — sequential, not simultaneous: the current slide wipes fully
+   out (its own transitionend fires) before the next one starts wiping in.
+   min-height is sized for the longest slide so nothing jumps when the
+   content underneath changes. */
 .hero-fade-stage {
   position: relative;
   min-height: 8rem;
+  margin-bottom: 1.5rem;
 }
 
-/* "Clarify" rather than a plain fade: the incoming slide starts soft and
-   comes into focus, the outgoing one softens as it goes — blur paired with
-   opacity, not opacity alone. */
+/* A left-to-right wipe: clipping the right edge (not the left) means the
+   visible region's leading edge grows rightward from x=0, so the reveal
+   sweeps left-to-right. The incoming slide reveals that way, the outgoing
+   one is swept away the same direction — both animate the same clip-path
+   edge, so with the incoming slide on top (hero-carousel.ts) it reads as
+   one motion, not two. */
 .hero-slide {
   position: absolute;
   inset: 0;
-  opacity: 0;
-  filter: blur(10px);
+  clip-path: inset(0 100% 0 0);
   pointer-events: none;
-  transition:
-    opacity 0.6s ease,
-    filter 0.6s ease;
+  transition: clip-path 1.8s ease;
 }
 
 .hero-slide.is-active {
-  opacity: 1;
-  filter: blur(0);
+  clip-path: inset(0 0% 0 0);
   pointer-events: auto;
 }
 
@@ -204,10 +218,21 @@ a {
   }
 }
 
+/* Pinned to the bottom of the hero (margin-top: auto, the classic flexbox
+   push) and centered — the action, not just another line of text. */
 .hero-cta {
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
   flex-wrap: wrap;
+  justify-content: center;
+  margin-top: auto;
+  margin-bottom: 0.6rem;
+}
+
+.hero-cta .btn {
+  padding: 0.95rem 2rem;
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
 .hero-overlay .btn.secondary {
@@ -219,6 +244,7 @@ a {
   font-size: 0.72rem;
   color: rgba(255, 255, 255, 0.6);
   margin: 0;
+  text-align: center;
 }
 
 /* Real counts (server/routes/stats.ts), not the "10K+" placeholder kind —
@@ -276,10 +302,10 @@ a {
      final safety net if even this isn't enough room. */
   .hero {
     aspect-ratio: unset;
-    min-height: 23rem;
+    min-height: 24rem;
   }
   .hero-overlay h1 {
-    font-size: 1.3rem;
+    font-size: 1.6rem;
   }
   .hero-fade-stage {
     min-height: 7rem;
@@ -454,6 +480,7 @@ textarea:focus-visible {
   padding: 0.6rem 1.1rem;
   font-size: 0.95rem;
   font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
   background: var(--accent);
   color: var(--accent-contrast);
