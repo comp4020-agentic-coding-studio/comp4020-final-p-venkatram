@@ -325,3 +325,23 @@ Concretely, on top of ([`88c241f`](https://github.com/comp4020-agentic-coding-st
   row" layout pattern, but wired to real, honest aggregate counts (rooms
   created, notes composed, lyric sheets shared) — no fabricated numbers, no
   identifying content (no room names) in a public, no-session endpoint.
+
+## Hero: a fading carousel instead of three stacked sections
+
+On top of ([`4d2ffdd`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/4d2ffdd)):
+stacking Why/How/What on top of the photo either overflowed the image's own
+height or forced the hero much taller than the photo itself — neither
+looked right. The headline and "Create an account"/"Log in" buttons now stay
+fixed; the explanatory content between them cycles through three slides on a
+cross-fade (`src/lib/hero-carousel.ts` toggles `.is-active`, a plain CSS
+opacity transition — no animation library), all in the same fixed-height
+space. Respects `prefers-reduced-motion` by just not auto-cycling (the first
+slide stays put) rather than forcing motion on someone who's asked not to
+see it.
+
+Also: the stats strip only reveals itself to a signed-in visitor now
+(`landing-stats.ts` checks the session before even requesting `/api/stats`)
+— a public vanity metric for anonymous visitors didn't fit this app's own
+"small, honest" framing, and every value falls back to `0` rather than ever
+rendering the literal string "undefined" if a field were ever missing from
+the response.

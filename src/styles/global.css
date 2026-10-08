@@ -120,56 +120,87 @@ a {
    to stay legible whether the rest of the page is in light or dark mode.
    Positioned absolutely (not in normal flow) so it spans exactly the same
    box as the image rather than forcing .hero taller than its aspect-ratio.
-   Why, How and What all stack in this one space now (top-anchored, not
-   bottom-anchored), so the wash is a flat, even darkness rather than a
-   top-to-bottom gradient — text can land anywhere in the box and stay
-   legible, not just at one edge of it. overflow-y covers the case where all
-   three sections together are taller than the image at very narrow widths. */
+   Vertically centered: headline and CTA stay put, only the fade-stage
+   between them cycles, so the whole block is compact and stable rather than
+   needing to stack or scroll. */
 .hero-overlay {
   position: absolute;
   inset: 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  gap: 1.1rem;
-  padding: 1.75rem 1.5rem;
-  background: rgba(8, 6, 16, 0.68);
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 2rem 1.75rem;
+  background: linear-gradient(180deg, rgba(8, 6, 16, 0.3) 0%, rgba(8, 6, 16, 0.82) 100%);
   overflow-y: auto;
 }
 
-.hero-section {
-  max-width: 42rem;
-}
-
 .hero-overlay h1 {
-  margin: 0 0 0.6rem;
+  margin: 0;
   color: #fff;
   font-size: 1.7rem;
   font-weight: 800;
   letter-spacing: -0.01em;
+  max-width: 38rem;
 }
 
-.hero-overlay h2 {
+/* The rotating stage: slides are stacked on top of each other (absolute, same
+   box) and cross-fade via opacity (src/lib/hero-carousel.ts toggles
+   .is-active) — min-height is sized for the longest slide so nothing jumps
+   when the content underneath changes. */
+.hero-fade-stage {
+  position: relative;
+  min-height: 8rem;
+}
+
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+.hero-slide.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hero-slide h2 {
   margin: 0 0 0.4rem;
   color: #fff;
   font-size: 1.15rem;
 }
 
-.hero-overlay p {
+.hero-slide p {
+  margin: 0;
   color: rgba(255, 255, 255, 0.92);
-  margin: 0 0 0.6rem;
   font-size: 0.92rem;
+  max-width: 38rem;
 }
 
-.hero-overlay ul {
+.hero-slide ul {
   margin: 0;
   padding-left: 1.2rem;
   color: rgba(255, 255, 255, 0.88);
   font-size: 0.88rem;
+  max-width: 38rem;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide {
+    transition: none;
+  }
+}
+
+.hero-cta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .hero-overlay .btn.secondary {
@@ -185,13 +216,21 @@ a {
 
 /* Real counts (server/routes/stats.ts), not the "10K+" placeholder kind —
    the layout pattern (three metrics in a row) is borrowed, the numbers
-   underneath it aren't. */
+   underneath it aren't. Shown only to signed-in visitors
+   (src/lib/landing-stats.ts) — the explicit [hidden] rule matters here since
+   a plain class selector of equal specificity would otherwise beat the
+   browser's default `[hidden] { display: none }` and the attribute alone
+   wouldn't actually hide anything. */
 .stats-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   text-align: center;
   margin-bottom: 1.5rem;
+}
+
+.stats-strip[hidden] {
+  display: none;
 }
 
 .stat {
@@ -222,18 +261,21 @@ a {
 }
 
 @media (max-width: 480px) {
-  /* The full-image aspect-ratio box is too short here to fit three stacked
-     sections' worth of text (a 1.5:1 photo at a ~340px-wide phone is only
-     ~225px tall) — on narrow screens only, trade "whole image visible" for
-     a readable hero and let object-fit: cover crop the photo instead.
-     overflow-y: auto on .hero-overlay is still the final safety net if even
-     this isn't enough room. */
+  /* The full-image aspect-ratio box is too short here to fit the headline,
+     one rotating slide and the CTA buttons comfortably (a 1.5:1 photo at a
+     ~340px-wide phone is only ~225px tall) — on narrow screens only, trade
+     "whole image visible" for a readable hero and let object-fit: cover
+     crop the photo instead. overflow-y: auto on .hero-overlay is still the
+     final safety net if even this isn't enough room. */
   .hero {
     aspect-ratio: unset;
-    min-height: 28rem;
+    min-height: 23rem;
   }
   .hero-overlay h1 {
     font-size: 1.3rem;
+  }
+  .hero-fade-stage {
+    min-height: 7rem;
   }
 }
 
