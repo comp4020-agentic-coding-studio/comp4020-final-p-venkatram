@@ -37,17 +37,17 @@ const { title, description = "A collaborative music-education platform for dista
     <div class="site-nav-backdrop" id="site-nav-backdrop"></div>
     <nav class="site-nav" id="site-nav" aria-label="Main menu" aria-hidden="true">
       <button type="button" class="site-nav-close" id="site-nav-close" aria-label="Close menu">&times;</button>
-      <div id="room-nav-section" class="site-nav-section" hidden>
-        <p class="site-nav-heading">This room</p>
-        <button type="button" class="room-nav-btn" data-panel="collab" aria-selected="true">Collaboration Room</button>
-        <button type="button" class="room-nav-btn" data-panel="record" aria-selected="false">Recording</button>
-        <button type="button" class="room-nav-btn" data-panel="compose" aria-selected="false">Composition Space</button>
-        <hr class="site-nav-divider" />
-      </div>
       <a href="/rooms/">Rooms</a>
       <a href="/activity/">Activity</a>
       <span id="auth-nav"></span>
       <button type="button" class="theme-toggle" data-theme-toggle>Switch to dark</button>
+      <div id="room-nav-section" class="site-nav-section" hidden>
+        <hr class="site-nav-divider" />
+        <p class="site-nav-heading">This room</p>
+        <button type="button" class="room-nav-btn" data-panel="collab" aria-selected="true">Collaboration Room</button>
+        <button type="button" class="room-nav-btn" data-panel="record" aria-selected="false">Recording</button>
+        <button type="button" class="room-nav-btn" data-panel="compose" aria-selected="false">Composition Space</button>
+      </div>
     </nav>
 
     <main class="shell">
