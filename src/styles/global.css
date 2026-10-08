@@ -139,17 +139,18 @@ a {
   align-items: center;
   text-align: center;
   justify-content: flex-start;
-  padding: 1.5rem;
+  padding: 3.5rem 1.75rem 2rem;
   background: linear-gradient(180deg, rgba(8, 6, 16, 0.3) 0%, rgba(8, 6, 16, 0.82) 100%);
   overflow-y: auto;
 }
 
 /* A deliberate rhythm rather than one uniform gap: headline to supporting
    text is a tight, continuous relationship; supporting text to the CTA is a
-   bigger beat (reader to action); CTA to the credit line is tight again,
-   since the credit is a footnote attached to the CTA, not its own section. */
+   bigger beat (reader to action) — and with the hero now filling most of the
+   screen's height, these get more room to breathe than they would in a
+   compact card. */
 .hero-overlay h1 {
-  margin: 0 0 0.9rem;
+  margin: 0 0 1.5rem;
   color: #fff;
   font-size: 2.2rem;
   font-weight: 800;
@@ -167,7 +168,7 @@ a {
   position: relative;
   width: 100%;
   min-height: 6rem;
-  margin-bottom: 1rem;
+  margin-bottom: 2rem;
 }
 
 /* A left-to-right wipe: clipping the right edge (not the left) means the
@@ -232,12 +233,14 @@ a {
 /* Right after the fade-stage, not pinned to the bottom — with the hero this
    much shorter now, everything (headline, slide, buttons) needs to read as
    one compact group near the top, not spread across the box. */
+/* The last thing in the overlay now (the photo credit that used to follow
+   it is gone), so no trailing margin of its own — .hero-overlay's own
+   bottom padding handles the space below it. */
 .hero-cta {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
   justify-content: center;
-  margin-bottom: 0.6rem;
 }
 
 .hero-cta .btn {
@@ -276,6 +279,53 @@ a {
 
 .stats-strip[hidden] {
   display: none;
+}
+
+/* Purely decorative, sized to the same 1-inch strip the hero's own height
+   calc already leaves empty at the bottom of the screen — filling reserved
+   space rather than floating on top of real content. aria-hidden in the
+   markup, pointer-events: none here, so it never gets in the way of
+   anything underneath it. */
+.sound-wave {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1in;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 1rem env(safe-area-inset-bottom, 0px);
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.sound-wave-bar {
+  width: 3px;
+  flex-shrink: 0;
+  height: 20%;
+  background: var(--accent-2);
+  border-radius: 999px;
+  opacity: 0.55;
+  animation: sound-wave-bob var(--duration, 0.8s) ease-in-out var(--delay, 0s) infinite alternate;
+}
+
+@keyframes sound-wave-bob {
+  from {
+    height: 12%;
+  }
+  to {
+    height: var(--peak, 60%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sound-wave-bar {
+    animation: none;
+    height: 35%;
+  }
 }
 
 .stat {

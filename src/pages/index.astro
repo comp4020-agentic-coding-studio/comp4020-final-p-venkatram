@@ -2,6 +2,16 @@
 import Layout from "../layouts/Layout.astro";
 import { Image } from "astro:assets";
 import heroImage from "../assets/sheet-music.jpg";
+
+// Purely decorative, randomized once at build time (not runtime) — good
+// enough for an ambient background detail, and keeps this a static page
+// with no JS needed just to draw it. Each bar gets its own duration/delay/
+// peak height so the row doesn't pulse in lockstep.
+const waveBars = Array.from({ length: 56 }, () => ({
+  duration: (0.6 + Math.random() * 0.9).toFixed(2),
+  delay: (Math.random() * -1.5).toFixed(2), // negative: starts mid-cycle, not all from zero
+  peak: Math.round(25 + Math.random() * 65),
+}));
 ---
 
 <Layout title="Home" description="WaveForge: a collaborative music-education platform for distance learning.">
@@ -72,4 +82,17 @@ import heroImage from "../assets/sheet-music.jpg";
     initLandingStats();
     initHeroCarousel();
   </script>
+
+  <!-- Purely decorative — sits in the 1-inch strip the hero already leaves
+       at the bottom of the screen, not stacked on top of real content. -->
+  <div class="sound-wave" aria-hidden="true">
+    {
+      waveBars.map((bar) => (
+        <span
+          class="sound-wave-bar"
+          style={`--duration:${bar.duration}s; --delay:${bar.delay}s; --peak:${bar.peak}%;`}
+        />
+      ))
+    }
+  </div>
 </Layout>

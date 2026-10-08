@@ -456,3 +456,20 @@ filename followed Unsplash's own naming convention
 (`<photographer>-<id>-unsplash.jpg`), which is how that credit was written
 honestly; this file's metadata doesn't say who took it, so the credit line
 is gone rather than guessed at.
+
+## Hero spacing, and a decorative sound wave
+
+On top of ([`b3bf7d4`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/b3bf7d4)):
+with the hero now filling most of the screen's height, the headline/content/
+CTA cluster needed more room to breathe than the tight rhythm a compact card
+called for — more top padding, bigger gaps between the three.
+
+A decorative sound-wave bar (`.sound-wave` in `index.astro`) now fills the
+1-inch strip the hero's own height calc already leaves empty at the bottom
+of the screen — reserved space put to use, not a new overlay floating on
+top of real content. 56 bars, each with its own randomized duration/delay/
+peak height (generated once at build time in Astro's frontmatter, not at
+runtime — good enough for an ambient detail, and keeps this a static page
+needing no JS just to draw it) so the row doesn't pulse in lockstep.
+`aria-hidden` and `pointer-events: none` throughout, and it goes still under
+`prefers-reduced-motion` rather than animating regardless.
