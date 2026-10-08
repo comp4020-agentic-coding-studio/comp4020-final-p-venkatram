@@ -486,3 +486,17 @@ picked up `margin-left: auto` alongside this, so it stays pinned to the
 header's right edge whether or not the hamburger sits before it — without
 that, `justify-content: space-between` would left-align the brand on its own
 once the hamburger disappears.
+
+## Lyrics: typing or pasting should be enough to enable Play
+
+The disabled-until-uploaded fix from earlier solved "Play does nothing with
+no lyrics," but introduced a narrower version of the same friction — Play
+stayed disabled while typing or pasting into the box, until a separate
+explicit "Upload lyrics" submit completed. Two changes: the box's own
+`input` event now enables Play/Restart as soon as there's non-empty text in
+it (not just once something's actually synced from the server), and both
+buttons save whatever's currently in the box first if it hasn't been
+uploaded yet (`withLatestLyricsSaved` in `lyrics.ts`, shared with the form's
+own submit so the two paths can't drift apart) before sending their
+transport message. Typing or pasting lyrics is now itself enough to make
+Play do something, with no separate required step first.

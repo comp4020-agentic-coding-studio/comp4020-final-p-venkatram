@@ -41,6 +41,9 @@ export function initLyrics(container: HTMLElement, roomId: string, conn: SignalS
   uploadBtn.textContent = "Upload lyrics";
   uploadForm.append(uploadBtn);
 
+  const titleInput = uploadForm.elements.namedItem("title") as HTMLInputElement;
+  const rawInput = uploadForm.elements.namedItem("raw") as HTMLTextAreaElement;
+
   const titleEl = document.createElement("h3");
   titleEl.style.marginBottom = "0.25rem";
 
@@ -59,7 +62,7 @@ export function initLyrics(container: HTMLElement, roomId: string, conn: SignalS
   restartBtn.textContent = "Restart";
   const emptyHint = document.createElement("span");
   emptyHint.className = "muted";
-  emptyHint.textContent = "Upload lyrics above to enable playback.";
+  emptyHint.textContent = "Type or paste lyrics above to enable playback.";
   transportRow.append(playBtn, restartBtn, emptyHint);
 
   const linesEl = document.createElement("div");
@@ -67,34 +70,55 @@ export function initLyrics(container: HTMLElement, roomId: string, conn: SignalS
 
   container.append(uploadForm, titleEl, transportRow, linesEl);
 
-  // Pressing play with nothing uploaded yet silently starts a transport
-  // clock with no lines to highlight — indistinguishable from the button
-  // just not working. Disable it instead of leaving that to be discovered.
+  // Enabled as soon as there's something to play — either already-synced
+  // lines, or text sitting in the box that hasn't been uploaded yet (Play
+  // and Restart below upload it first, automatically, rather than making
+  // that a separate required step before they'll do anything).
   function updateTransportAvailability(): void {
-    const hasLines = lines.length > 0;
-    playBtn.disabled = !hasLines;
-    restartBtn.disabled = !hasLines;
-    emptyHint.hidden = hasLines;
+    const hasSomethingToPlay = lines.length > 0 || rawInput.value.trim().length > 0;
+    playBtn.disabled = !hasSomethingToPlay;
+    restartBtn.disabled = !hasSomethingToPlay;
+    emptyHint.hidden = hasSomethingToPlay;
   }
   updateTransportAvailability();
+  rawInput.addEventListener("input", updateTransportAvailability);
 
-  uploadForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const title = (uploadForm.elements.namedItem("title") as HTMLInputElement).value;
-    const raw = (uploadForm.elements.namedItem("raw") as HTMLTextAreaElement).value;
-    fetch(`/api/rooms/${encodeURIComponent(roomId)}/lyrics`, {
+  // Shared by the form's own submit and by Play/Restart auto-saving
+  // whatever's currently typed — one path, so they can't drift apart.
+  function uploadLyrics(): Promise<void> {
+    return fetch(`/api/rooms/${encodeURIComponent(roomId)}/lyrics`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify({ title, raw }),
-    }).catch(() => {
-      // the room's WS broadcast is the real source of truth here; a failed
-      // POST just means this upload didn't take, nothing to reconcile
-    });
+      body: JSON.stringify({ title: titleInput.value, raw: rawInput.value }),
+    })
+      .then(() => undefined)
+      .catch(() => {
+        // the room's WS broadcast is the real source of truth here; a failed
+        // POST just means this upload didn't take, nothing to reconcile
+      });
+  }
+
+  uploadForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void uploadLyrics();
   });
 
-  playBtn.addEventListener("click", () => conn.send({ type: playing ? "lyrics.pause" : "lyrics.play" }));
-  restartBtn.addEventListener("click", () => conn.send({ type: "lyrics.seek", positionMs: 0 }));
+  // If there's unsaved text in the box, save it first — so Play always
+  // plays what's actually on screen, not whatever was last explicitly
+  // uploaded, and typing or pasting lyrics is itself enough to make these
+  // buttons do something, without a separate required upload step first.
+  async function withLatestLyricsSaved(run: () => void): Promise<void> {
+    if (rawInput.value.trim().length > 0) await uploadLyrics();
+    run();
+  }
+
+  playBtn.addEventListener("click", () => {
+    void withLatestLyricsSaved(() => conn.send({ type: playing ? "lyrics.pause" : "lyrics.play" }));
+  });
+  restartBtn.addEventListener("click", () => {
+    void withLatestLyricsSaved(() => conn.send({ type: "lyrics.seek", positionMs: 0 }));
+  });
 
   function renderLines(): void {
     linesEl.innerHTML = "";
