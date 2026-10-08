@@ -1,30 +1,57 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { Image } from "astro:assets";
+import heroBand from "../assets/hero-band.jpg";
 ---
 
 <Layout title="Home" description="Roundsong: a collaborative music-education platform for distance learning.">
+  <section class="hero">
+    <Image
+      src={heroBand}
+      alt="Hands raising an acoustic guitar, a laptop, an electric guitar, a cymbal, a bass and a keyboard against a flat grey sky"
+      class="hero-image"
+      widths={[480, 960, 1600, 2400]}
+      sizes="100vw"
+      loading="eager"
+    />
+    <div class="hero-overlay">
+      <h1>Distance shouldn't mean nobody sings together.</h1>
+      <p>
+        Real internet latency makes playing in perfect sync impossible over distance — no app changes that.
+        Roundsong doesn't pretend otherwise: it's built for call-and-response, the way a singing lesson or a round
+        already works, so a teacher or a lead voice can model a phrase and everyone else can answer, from wherever
+        they are.
+      </p>
+      <p>
+        <a class="btn" href="/signup/">Create an account</a>
+        <a class="btn secondary" href="/login/">Log in</a>
+      </p>
+      <p class="hero-credit">Photo: Caleb George / Unsplash</p>
+    </div>
+  </section>
+
   <section class="card" style="margin-bottom:1.5rem;">
-    <h1 style="margin-top:0;">Sing in rounds, from anywhere.</h1>
+    <h2 style="margin-top:0;">How it works</h2>
     <p class="muted">
-      Roundsong is a small room where a teacher or a lead voice models a phrase, and everyone else answers — lyrics
-      on screen, cameras on by consent, and a shared space to build the arrangement together. It's built for
-      call-and-response, not studio-tight sync: real internet latency makes true sample-accurate ensemble playing
-      impossible over distance, so Roundsong leans into the form that already works that way.
+      One person leads — a phrase, a line, a verse — and the room answers in turn, or layers a part on top once
+      they've heard it. Everything else follows from that one decision.
     </p>
-    <p>
-      <a class="btn" href="/signup/">Create an account</a>
-      <a class="btn secondary" href="/rooms/">Browse rooms</a>
-    </p>
+    <ul>
+      <li>Call-and-response, not synced playback: one leader at a time, never a race to be first.</li>
+      <li>Camera and mic only turn on when you say so — a consent step every time you join a room, not just the first.</li>
+      <li>"Original Sound" is off by default and raw when you ask for it: no echo cancellation or noise suppression fighting two people singing together.</li>
+      <li>The server holds the one true copy of what the room looks like — a composition edit or a lyrics cue reaches everyone the same way, not whoever's connection happened to be fastest.</li>
+    </ul>
   </section>
 
   <section class="card">
     <h2 style="margin-top:0;">What's here</h2>
     <ul>
-      <li>Accounts, and rooms you create or join.</li>
-      <li>Camera and mic by explicit consent, with an "Original Sound" mode so singing over each other doesn't get cut by the browser's call-cleanup processing.</li>
-      <li>Lyrics you upload, with a cursor that follows along as the room's leader plays.</li>
-      <li>A shared space to compose together.</li>
-      <li>Recordings of your own sessions, and of the room's group sound.</li>
+      <li>Accounts, and rooms you create or join by link.</li>
+      <li>Camera and mic by explicit consent, with Original Sound for singing over each other.</li>
+      <li>Lyrics you upload, with a karaoke-style cursor that follows whoever's leading.</li>
+      <li>A shared composition space — real staff notation, not a grid of buttons — with one-click PDF export of what you wrote.</li>
+      <li>Recordings of your own session, and of the room's group sound, saved straight to your device.</li>
     </ul>
   </section>
 </Layout>

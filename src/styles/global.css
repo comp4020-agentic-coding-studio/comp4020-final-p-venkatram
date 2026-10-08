@@ -53,6 +53,70 @@ a {
   padding: 1rem 1.25rem 3rem;
 }
 
+.hero {
+  position: relative;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  min-height: 22rem;
+}
+
+.hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+/* Fixed dark scrim regardless of site theme — the photo and its text need
+   to stay legible whether the rest of the page is in light or dark mode. */
+.hero-overlay {
+  position: relative;
+  z-index: 1;
+  min-height: 22rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 3rem 1.5rem 2rem;
+  background: linear-gradient(180deg, rgba(10, 8, 20, 0.15) 0%, rgba(10, 8, 20, 0.85) 100%);
+}
+
+.hero-overlay h1 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.8rem;
+  max-width: 38rem;
+}
+
+.hero-overlay p {
+  color: rgba(255, 255, 255, 0.92);
+  max-width: 42rem;
+  margin: 0;
+}
+
+.hero-overlay .btn.secondary {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.hero-credit {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+@media (max-width: 480px) {
+  .hero,
+  .hero-overlay {
+    min-height: 18rem;
+  }
+  .hero-overlay h1 {
+    font-size: 1.4rem;
+  }
+}
+
 .site-header {
   display: flex;
   align-items: center;

@@ -265,3 +265,29 @@ head start from the foundation commit (structured events, a live
 left for the weeks ahead: crit 10's own logging additions as more user
 actions accrue events worth watching, and the stretch goal (real Drive/
 OneDrive OAuth) if time allows before the A3 deadline.
+
+## Landing page: why, how, what — and a hero image
+
+The landing page was a single hero card plus a feature list; it's now three
+sections in that order — why Roundsong exists (the latency-honesty argument
+`README.md` already makes), how it actually behaves (call-and-response,
+consent, Original Sound, server-authoritative state), then what's concretely
+there (the feature list, now mentioning the real staff notation and PDF
+export that didn't exist when that copy was first written).
+
+The hero uses a photo (Caleb George, via Unsplash — free license, credited
+in the page itself) of hands holding instruments overhead, run through
+Astro's built-in `astro:assets` `<Image>` rather than hand-rolled resizing:
+it needed `sharp` added as an explicit devDependency (it's only an
+*optional* dependency of Astro itself, which pnpm's strict linking doesn't
+surface to Astro's own `loadSharp` lookup) but in exchange, the 976KB source
+JPEG ships as five responsive WebP sizes (4KB–346KB) generated at build
+time, `sharp` itself never entering the runtime image. The hero's dark
+scrim is fixed regardless of the site's own dark/light toggle — a photo
+needs one legible treatment, not two.
+
+Separately: the landing page's only call to action used to be "Create an
+account" (plus a "Browse rooms" link that silently redirected an
+unauthenticated visitor to `/login/` anyway) — no obvious way for a
+returning user to just log in. Replaced with explicit "Create an account" /
+"Log in" buttons.
