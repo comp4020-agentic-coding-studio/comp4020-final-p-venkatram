@@ -1,4 +1,4 @@
-# Roundsong harness
+# WaveForge harness
 
 What this app is and why is in `README.md` (read it first) and the [final
 project brief](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/assessments/final-project/).

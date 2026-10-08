@@ -269,7 +269,7 @@ OneDrive OAuth) if time allows before the A3 deadline.
 ## Landing page: why, how, what — and a hero image
 
 The landing page was a single hero card plus a feature list; it's now three
-sections in that order — why Roundsong exists (the latency-honesty argument
+sections in that order — why WaveForge exists (the latency-honesty argument
 `README.md` already makes), how it actually behaves (call-and-response,
 consent, Original Sound, server-authoritative state), then what's concretely
 there (the feature list, now mentioning the real staff notation and PDF

@@ -58,7 +58,9 @@ a {
   border-radius: 0.75rem;
   overflow: hidden;
   margin-bottom: 1.5rem;
-  min-height: 22rem;
+  /* The source photo's own shape (3123x2082), so the box is always exactly
+     tall enough for the whole image at full width — nothing cropped out. */
+  aspect-ratio: 3123 / 2082;
 }
 
 .hero-image {
@@ -66,22 +68,27 @@ a {
   inset: 0;
   width: 100%;
   height: 100%;
+  /* object-fit here is really just a safety net: since .hero's own
+     aspect-ratio already matches the image exactly, nothing gets cropped. */
   object-fit: cover;
   z-index: 0;
 }
 
 /* Fixed dark scrim regardless of site theme — the photo and its text need
-   to stay legible whether the rest of the page is in light or dark mode. */
+   to stay legible whether the rest of the page is in light or dark mode.
+   Positioned absolutely (not in normal flow) so it spans exactly the same
+   box as the image rather than forcing .hero taller than its aspect-ratio. */
 .hero-overlay {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 1;
-  min-height: 22rem;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   gap: 0.75rem;
   padding: 3rem 1.5rem 2rem;
   background: linear-gradient(180deg, rgba(10, 8, 20, 0.15) 0%, rgba(10, 8, 20, 0.85) 100%);
+  overflow-y: auto;
 }
 
 .hero-overlay h1 {
@@ -108,8 +115,12 @@ a {
 }
 
 @media (max-width: 480px) {
-  .hero,
-  .hero-overlay {
+  /* The full-image aspect-ratio box is too short here to fit the overlay's
+     text comfortably (a 1.5:1 photo at a ~340px-wide phone is only ~225px
+     tall) — on narrow screens only, trade "whole image visible" for
+     "readable hero text" and let object-fit: cover crop it instead. */
+  .hero {
+    aspect-ratio: unset;
     min-height: 18rem;
   }
   .hero-overlay h1 {

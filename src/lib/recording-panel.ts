@@ -26,7 +26,7 @@ export function initRecordingPanel(container: HTMLElement, opts: RecordingPanelO
 
   personalBtn.addEventListener("click", () => {
     if (personalRecorder.isRecording) {
-      personalRecorder.stop().then((blob) => downloadBlob(blob, `roundsong-personal-${Date.now()}.webm`));
+      personalRecorder.stop().then((blob) => downloadBlob(blob, `waveforge-personal-${Date.now()}.webm`));
       personalBtn.textContent = "Record myself";
       return;
     }
@@ -47,7 +47,7 @@ export function initRecordingPanel(container: HTMLElement, opts: RecordingPanelO
 
   groupBtn.addEventListener("click", () => {
     if (groupRecorder.isRecording) {
-      groupRecorder.stop().then((blob) => downloadBlob(blob, `roundsong-group-${Date.now()}.webm`));
+      groupRecorder.stop().then((blob) => downloadBlob(blob, `waveforge-group-${Date.now()}.webm`));
       groupBtn.textContent = "Record the group";
       return;
     }

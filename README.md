@@ -1,8 +1,8 @@
-# Roundsong
+# WaveForge
 
 ## What good means here
 
-Roundsong is a small room for music teaching and rehearsal across distance: a
+WaveForge is a small room for music teaching and rehearsal across distance: a
 teacher or lead voice models a phrase, lyrics scroll past so a learner can
 follow the words, and everyone answers back on camera, by consent. "Good"
 here is not "feels like being in the same room" — that promise breaks the
@@ -11,7 +11,7 @@ connections is tens to low hundreds of milliseconds, and no amount of client
 code removes it. A platform that pretends otherwise either lies about its
 latency or falls apart the first time two singers try to harmonise live.
 
-So Roundsong is honest about what it can and can't do, and designs for the
+So WaveForge is honest about what it can and can't do, and designs for the
 shape that already works over a gap that size: call-and-response, not
 simultaneous unison. One person leads a phrase; others answer in turn, or
 layer a part on top once they've heard it, the way a singing lesson, a round,
@@ -24,14 +24,14 @@ software gets in musicians' way. Zoom ships an explicit "Original Sound for
 Musicians" toggle because its default audio pipeline — echo cancellation,
 noise suppression, automatic gain — is tuned for one voice talking at a time,
 and actively fights two people singing together: it ducks, gates, and
-flattens exactly the sound a duet needs. Roundsong builds the same idea in
+flattens exactly the sound a duet needs. WaveForge builds the same idea in
 natively, as a toggle on its own call feature, rather than asking anyone to
 route through a separate app. And because this is a learning tool, cameras
 and microphones never turn on by assumption — every session asks first,
 visibly, and can be turned off without losing your place in the room.
 
 This fits the final project brief's own values: small, single-purpose, for
-small groups, not a general-purpose conferencing clone. Roundsong doesn't try
+small groups, not a general-purpose conferencing clone. WaveForge doesn't try
 to replace Zoom, Discord, or a DAW — it does one thing (a teacher and a few
 students working a piece together over distance) and keeps the rest out of
 the way.

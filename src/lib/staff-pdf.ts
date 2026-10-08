@@ -69,7 +69,7 @@ function buildExportSvg(roomName: string, cells: Cell[], bpm: number): SVGSVGEle
   background.setAttribute("fill", "#ffffff");
   svg.append(background);
 
-  svg.append(text(LEFT_MARGIN, 42, 26, `Roundsong — ${roomName || "Untitled room"}`, { "font-weight": "bold" }));
+  svg.append(text(LEFT_MARGIN, 42, 26, `WaveForge — ${roomName || "Untitled room"}`, { "font-weight": "bold" }));
   svg.append(
     text(LEFT_MARGIN, 66, 13, `${bpm} bpm · exported ${new Date().toLocaleString()}`, {
       fill: "#555555",
@@ -183,7 +183,7 @@ export async function exportCompositionPdf(roomName: string, cells: Cell[], bpm:
   try {
     const pdf = new jsPDF(width > height ? "l" : "p", "pt", [width, height]);
     await pdf.svg(svg, { x: 0, y: 0, width, height });
-    pdf.save(`roundsong-${slugify(roomName)}.pdf`);
+    pdf.save(`waveforge-${slugify(roomName)}.pdf`);
   } finally {
     svg.remove();
   }
