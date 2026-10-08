@@ -549,6 +549,26 @@ select {
   color: var(--accent-contrast);
 }
 
+/* An instructional notice, set apart from ordinary body text rather than
+   just another muted paragraph easy to skim past. */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent-2);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.banner p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
 .readme-body h1,
 .readme-body h2,
 .readme-body h3 {

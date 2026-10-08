@@ -439,3 +439,9 @@ playback") explaining why — so there's nothing to discover by trial and
 error. The underlying mechanism (the cursor follows a leader-driven,
 monotonic-clock-anchored position; Restart seeks to 0) was already exactly
 what was asked for; it just had no way to tell a visitor that yet.
+
+On top of ([`c8c8af2`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/c8c8af2)):
+the room page's "share this link" instruction moved from a plain muted
+paragraph into a `.banner` component (a bordered, accent-striped callout) —
+a new, small, reusable piece rather than a one-off style, since instructional
+notices like this are likely to come up again.
