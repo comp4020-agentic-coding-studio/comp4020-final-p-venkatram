@@ -420,3 +420,22 @@ Three real functional gaps in the Collaboration Room, not styling:
   button's own corner position still make sense full-screen.
 - **"Recording" → "Recordings library"**, the room-nav label and panel
   heading, for clarity about what that panel actually holds.
+
+## Lyrics Play button: a UX gap reported as "doesn't do anything"
+
+On top of ([`c211e0f`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/c211e0f)):
+traced the whole path end to end — the click handler, the WS round-trip
+(`server/ws.ts`'s `lyrics.play`/`lyrics.pause`/`lyrics.seek`, already covered
+by `spec/lyrics.test.ts`), `room-connection.ts`'s dispatch, `room-page.ts`'s
+routing to `applyTransport` — and all of it was already correct. The actual
+gap: pressing Play before any lyrics are uploaded silently starts a
+transport clock with no lines to highlight, so the only visible change is
+the button text flipping from "Play" to "Pause" — easy to miss, and
+indistinguishable from the button just not working.
+
+Fixed by disabling Play and Restart until a lyrics document with at least
+one line exists, with a visible hint ("Upload lyrics above to enable
+playback") explaining why — so there's nothing to discover by trial and
+error. The underlying mechanism (the cursor follows a leader-driven,
+monotonic-clock-anchored position; Restart seeks to 0) was already exactly
+what was asked for; it just had no way to tell a visitor that yet.

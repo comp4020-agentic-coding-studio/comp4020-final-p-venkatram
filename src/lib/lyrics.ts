@@ -46,6 +46,7 @@ export function initLyrics(container: HTMLElement, roomId: string, conn: SignalS
 
   const transportRow = document.createElement("div");
   transportRow.style.display = "flex";
+  transportRow.style.alignItems = "center";
   transportRow.style.gap = "0.5rem";
   transportRow.style.margin = "0.5rem 0";
   const playBtn = document.createElement("button");
@@ -56,12 +57,26 @@ export function initLyrics(container: HTMLElement, roomId: string, conn: SignalS
   restartBtn.type = "button";
   restartBtn.className = "btn secondary";
   restartBtn.textContent = "Restart";
-  transportRow.append(playBtn, restartBtn);
+  const emptyHint = document.createElement("span");
+  emptyHint.className = "muted";
+  emptyHint.textContent = "Upload lyrics above to enable playback.";
+  transportRow.append(playBtn, restartBtn, emptyHint);
 
   const linesEl = document.createElement("div");
   linesEl.className = "lyrics-lines";
 
   container.append(uploadForm, titleEl, transportRow, linesEl);
+
+  // Pressing play with nothing uploaded yet silently starts a transport
+  // clock with no lines to highlight — indistinguishable from the button
+  // just not working. Disable it instead of leaving that to be discovered.
+  function updateTransportAvailability(): void {
+    const hasLines = lines.length > 0;
+    playBtn.disabled = !hasLines;
+    restartBtn.disabled = !hasLines;
+    emptyHint.hidden = hasLines;
+  }
+  updateTransportAvailability();
 
   uploadForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -128,6 +143,7 @@ export function initLyrics(container: HTMLElement, roomId: string, conn: SignalS
       anchorPositionMs = doc.positionMs;
       anchorPerfMs = performance.now();
       playBtn.textContent = playing ? "Pause" : "Play";
+      updateTransportAvailability();
       renderLines();
     },
     applyContent: (doc) => {
@@ -135,6 +151,7 @@ export function initLyrics(container: HTMLElement, roomId: string, conn: SignalS
       // playback position isn't this message's to touch.
       lines = doc.lines;
       titleEl.textContent = doc.title ?? "No lyrics uploaded yet";
+      updateTransportAvailability();
       renderLines();
     },
     applyTransport: (transport) => {
