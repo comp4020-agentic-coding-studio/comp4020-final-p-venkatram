@@ -711,6 +711,36 @@ select {
   margin: 0 0 1rem;
 }
 
+/* A standard 16:9 responsive embed box — YouTube's iframe fills it exactly,
+   whatever the room column's actual width ends up being. */
+.karaoke-player {
+  position: relative;
+  width: 100%;
+  max-width: 48rem;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  margin-top: 0.75rem;
+}
+
+.karaoke-player iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.karaoke-player .muted {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
 .composition-toolbar {
   display: flex;
   align-items: center;

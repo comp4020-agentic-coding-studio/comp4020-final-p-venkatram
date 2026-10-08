@@ -8,6 +8,7 @@ import { initLyrics } from "./lyrics";
 import type { LyricLine } from "../../shared/lyrics";
 import { initRecordingPanel } from "./recording-panel";
 import { initMediaControls } from "./media-controls";
+import { initKaraoke } from "./karaoke";
 
 interface Room {
   id: string;
@@ -124,6 +125,8 @@ export function initRoomPage(): void {
         ? initCompositionGrid(compositionRoot, { send: (msg) => conn.send(msg) }, data.room.name)
         : null;
       const lyricsController = lyricsRoot ? initLyrics(lyricsRoot, roomId, { send: (msg) => conn.send(msg) }) : null;
+      const karaokeRoot = document.getElementById("karaoke-root");
+      const karaokeController = karaokeRoot ? initKaraoke(karaokeRoot, roomId) : null;
       const remoteStreams = new Map<string, MediaStream>();
       const media = new RoomMedia(
         { send: (msg) => conn.send(msg) },
@@ -198,6 +201,8 @@ export function initRoomPage(): void {
               playing: Boolean(message.playing),
               positionMs: Number(message.positionMs) || 0,
             });
+          } else if (message.type === "video.sync" || message.type === "video.update") {
+            karaokeController?.applyVideo({ youtubeId: (message.youtubeId as string | null) ?? null });
           } else {
             void media.handleSignal(message);
           }

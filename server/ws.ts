@@ -14,6 +14,7 @@ import { getRoom, joinRoom } from "./rooms.ts";
 import { getComposition, setTempo, toggleCell } from "./compositions.ts";
 import { getLyrics } from "./lyrics.ts";
 import { getTransport, pause, play, seek } from "./realtime/lyrics-transport.ts";
+import { getVideo } from "./videos.ts";
 import {
   addConnection,
   broadcast,
@@ -42,6 +43,7 @@ function onConnection(ws: WebSocket, db: DatabaseSync, roomId: string, userId: s
   ws.send(JSON.stringify({ type: "presence.sync", users: presentUsers(roomId) }));
   ws.send(JSON.stringify({ type: "composition.sync", ...getComposition(db, roomId) }));
   ws.send(JSON.stringify({ type: "lyrics.sync", ...lyrics, ...getTransport(roomId) }));
+  ws.send(JSON.stringify({ type: "video.sync", ...getVideo(db, roomId) }));
   broadcast(roomId, { type: "presence.join", user: { userId, displayName } }, conn);
 
   ws.on("message", (raw: Buffer) => {

@@ -500,3 +500,34 @@ uploaded yet (`withLatestLyricsSaved` in `lyrics.ts`, shared with the form's
 own submit so the two paths can't drift apart) before sending their
 transport message. Typing or pasting lyrics is now itself enough to make
 Play do something, with no separate required step first.
+
+## Two requests declined or scoped down, and a Karaoke panel
+
+Two asks arrived together: real-time singing detection to drive the lyrics
+cursor from the microphone, and a karaoke page that fetches requested songs
+from YouTube. Neither was built as asked, for different reasons, worked
+through with the user rather than silently built or silently dropped:
+
+- **Singing detection**: the only web API that does this (Web Speech API) is
+  built for speech, not singing — sustained notes and pitch bends confuse
+  it — works only in Chromium browsers, and sends raw microphone audio to a
+  cloud speech service to transcribe it, a real departure from this app's
+  consent-and-local-first handling of audio everywhere else. Decision:
+  skipped. The existing leader-driven, time-based cursor (this week's ADR)
+  stays the one mechanism.
+- **"Fetch requested songs from YouTube"**: downloading or extracting
+  YouTube content is a Terms of Service violation regardless of
+  implementation. What YouTube's own embed API allows is playback of a
+  video someone links to — nothing about a pasted link's audio is
+  accessible to this app once embedded (an iframe is sandboxed from the
+  page around it), so there's no path from "embed a video" to "detect or
+  sync against its audio" even if the first idea had gone ahead.
+
+What got built: a fourth room view, **Karaoke** (`src/lib/karaoke.ts`,
+`server/videos.ts`, `server/routes/videos.ts`) — paste a YouTube link, it
+plays via YouTube's own official embedded player, shared with everyone in
+the room the same way the composition grid and lyrics are (server holds the
+one video per room, broadcasts changes). The server only ever stores the
+extracted 11-character video id (`shared/youtube.ts` parses `watch`/
+`youtu.be`/`embed`/`shorts` URL shapes), never the raw pasted string, so the
+embedded iframe's `src` is always something this app built itself.
