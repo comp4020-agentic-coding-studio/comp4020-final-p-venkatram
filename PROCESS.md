@@ -445,3 +445,14 @@ the room page's "share this link" instruction moved from a plain muted
 paragraph into a `.banner` component (a bordered, accent-striped callout) —
 a new, small, reusable piece rather than a one-off style, since instructional
 notices like this are likely to come up again.
+
+## Hero image swapped again
+
+On top of ([`60ef169`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-p-venkatram/commit/60ef169)):
+the hero photo changed again, to a close-up of annotated sheet music
+(`src/assets/sheet-music.jpg`, replacing the band photo, which is deleted —
+nothing else referenced it). No attribution line this time: the band photo's
+filename followed Unsplash's own naming convention
+(`<photographer>-<id>-unsplash.jpg`), which is how that credit was written
+honestly; this file's metadata doesn't say who took it, so the credit line
+is gone rather than guessed at.

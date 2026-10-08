@@ -1,14 +1,14 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { Image } from "astro:assets";
-import heroBand from "../assets/hero-band.jpg";
+import heroImage from "../assets/sheet-music.jpg";
 ---
 
 <Layout title="Home" description="WaveForge: a collaborative music-education platform for distance learning.">
   <section class="hero">
     <Image
-      src={heroBand}
-      alt="Hands raising an acoustic guitar, a laptop, an electric guitar, a cymbal, a bass and a keyboard against a flat grey sky"
+      src={heroImage}
+      alt="Close-up of an annotated sheet music book, open to a piano piece with handwritten performance notes"
       class="hero-image"
       widths={[480, 960, 1600, 2400]}
       sizes="100vw"
@@ -49,8 +49,6 @@ import heroBand from "../assets/hero-band.jpg";
         <a class="btn" href="/signup/">Create an account</a>
         <a class="btn secondary" href="/login/">Log in</a>
       </div>
-
-      <p class="hero-credit">Photo: Caleb George / Unsplash</p>
     </div>
   </section>
 
