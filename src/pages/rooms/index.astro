@@ -1,23 +1,40 @@
 ---
 import Layout from "../../layouts/Layout.astro";
+import Backdrop from "../../components/Backdrop.astro";
 ---
 
 <Layout title="Rooms" description="Your WaveForge rooms.">
+  <Backdrop />
   <div id="rooms-root" hidden>
     <h1>Rooms</h1>
     <div id="room-list"></div>
 
-    <div class="card" style="max-width:26rem;">
+    <button type="button" id="create-room-trigger" class="btn" hidden>Create Room</button>
+
+    <dialog id="create-room-dialog">
+      <button type="button" id="create-room-close" class="dialog-close" aria-label="Close">&times;</button>
       <h2 style="margin-top:0;">Create a room</h2>
       <form id="create-room-form" novalidate>
         <div class="field">
           <label for="room-name">Room name</label>
           <input id="room-name" name="name" type="text" required maxlength="80" placeholder="Thursday rehearsal" />
         </div>
+        <div class="field">
+          <label for="room-password">Room password</label>
+          <input
+            id="room-password"
+            name="password"
+            type="password"
+            required
+            minlength="8"
+            autocomplete="new-password"
+          />
+          <p class="muted" style="margin:0.25rem 0 0;">Anyone joining needs this, and you'll admit them live.</p>
+        </div>
         <p id="create-room-error" class="error-text" role="alert"></p>
         <button type="submit" class="btn">Create</button>
       </form>
-    </div>
+    </dialog>
   </div>
   <script>
     import { initRoomsPage } from "../../lib/rooms-page";
