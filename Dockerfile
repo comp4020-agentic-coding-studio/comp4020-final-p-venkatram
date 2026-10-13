@@ -8,6 +8,7 @@ RUN npm install -g pnpm@11.9.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY astro.config.ts tsconfig.json ./
+COPY shared ./shared
 COPY src ./src
 RUN pnpm build
 
@@ -22,6 +23,7 @@ RUN npm install -g pnpm@11.9.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile --prod
 COPY server ./server
+COPY shared ./shared
 COPY src/styles ./src/styles
 COPY README.md ./README.md
 COPY --from=builder /app/dist ./dist
