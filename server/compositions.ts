@@ -1,67 +1,128 @@
 // The server is the one source of truth for a room's composition: a client
-// sends intent (toggle this cell, set this tempo), the server applies it to
-// SQLite and broadcasts the resulting state to everyone in the room,
-// including whoever sent the change. No client-side optimistic update to
-// reconcile later — see PROCESS.md's crit 9 ADR for why last-writer-wins
-// without locking is the right shape for a small, low-conflict room.
+// sends intent (toggle this cell, add/rename/remove a voice, set this
+// tempo), the server applies it to SQLite and broadcasts the resulting state
+// to everyone, including whoever sent the change. No client-side optimistic
+// update to reconcile later — see PROCESS.md's crit 9 ADR for why
+// last-writer-wins without locking is the right shape for a small,
+// low-conflict room. Multiple voices share one tempo (composition_rooms) but
+// each has its own independently-edited grid (composition_voices),
+// validated and scoped by room_id so a stale or forged voice id from
+// another room can never be read or written.
 import type { DatabaseSync } from "node:sqlite";
-import { clampBpm, DEFAULT_BPM, type Cell, type DurationCategory, isValidCell } from "../shared/grid.ts";
+import { randomUUID } from "node:crypto";
+import { clampBpm, DEFAULT_BPM, type Cell, isValidCell } from "../shared/grid.ts";
+import { defaultVoiceName, MAX_VOICE_NAME_LENGTH, MAX_VOICES, type CompositionState, type Voice } from "../shared/composition.ts";
 
-export interface CompositionState {
-  bpm: number;
-  cells: Cell[];
-}
-
-interface CompositionRow {
-  bpm: number;
+interface VoiceRow {
+  id: string;
+  name: string;
+  sort_order: number;
   grid: string;
 }
 
-export function getComposition(db: DatabaseSync, roomId: string): CompositionState {
-  const row = db.prepare("SELECT bpm, grid FROM compositions WHERE room_id = ?").get(roomId) as
-    | CompositionRow
-    | undefined;
-  if (!row) return { bpm: DEFAULT_BPM, cells: [] };
+function toVoice(row: VoiceRow): Voice {
+  let cells: Cell[] = [];
   try {
-    const cells = JSON.parse(row.grid) as Cell[];
-    return { bpm: row.bpm, cells: Array.isArray(cells) ? cells : [] };
+    const parsed: unknown = JSON.parse(row.grid);
+    if (Array.isArray(parsed)) cells = parsed as Cell[];
   } catch {
-    return { bpm: row.bpm, cells: [] };
+    cells = [];
   }
+  return { id: row.id, name: row.name, order: row.sort_order, cells };
 }
 
-function save(db: DatabaseSync, roomId: string, state: CompositionState): void {
+function listVoices(db: DatabaseSync, roomId: string): Voice[] {
+  const rows = db
+    .prepare("SELECT id, name, sort_order, grid FROM composition_voices WHERE room_id = ? ORDER BY sort_order ASC")
+    .all(roomId) as unknown as VoiceRow[];
+  return rows.map(toVoice);
+}
+
+function getBpm(db: DatabaseSync, roomId: string): number {
+  const row = db.prepare("SELECT bpm FROM composition_rooms WHERE room_id = ?").get(roomId) as { bpm: number } | undefined;
+  return row ? row.bpm : DEFAULT_BPM;
+}
+
+function saveBpm(db: DatabaseSync, roomId: string, bpm: number): void {
   db.prepare(
-    `INSERT INTO compositions (room_id, bpm, grid, updated_at) VALUES (?, ?, ?, ?)
-     ON CONFLICT(room_id) DO UPDATE SET bpm = excluded.bpm, grid = excluded.grid, updated_at = excluded.updated_at`,
-  ).run(roomId, state.bpm, JSON.stringify(state.cells), Date.now());
+    `INSERT INTO composition_rooms (room_id, bpm, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(room_id) DO UPDATE SET bpm = excluded.bpm, updated_at = excluded.updated_at`,
+  ).run(roomId, bpm, Date.now());
+}
+
+function voiceExists(db: DatabaseSync, roomId: string, voiceId: string): boolean {
+  return Boolean(db.prepare("SELECT 1 FROM composition_voices WHERE id = ? AND room_id = ?").get(voiceId, roomId));
+}
+
+function saveVoiceGrid(db: DatabaseSync, roomId: string, voiceId: string, cells: Cell[]): void {
+  db.prepare("UPDATE composition_voices SET grid = ?, updated_at = ? WHERE id = ? AND room_id = ?").run(
+    JSON.stringify(cells),
+    Date.now(),
+    voiceId,
+    roomId,
+  );
+}
+
+export function getComposition(db: DatabaseSync, roomId: string): CompositionState {
+  return { bpm: getBpm(db, roomId), voices: listVoices(db, roomId) };
 }
 
 // A click always toggles by (step, pitch) alone, duration included: clicking
 // an occupied slot removes whatever note is there regardless of its
 // duration, clicking an empty one places a note at the duration the client
-// currently has selected in its toolbar.
+// currently has selected in its toolbar. Scoped to one voice; an invalid
+// cell or a voice id that doesn't belong to this room is just ignored.
 export function toggleCell(
   db: DatabaseSync,
   roomId: string,
+  voiceId: string,
   step: number,
   pitch: number,
   duration: number,
 ): CompositionState | null {
-  if (!isValidCell(step, pitch, duration)) return null;
-  const current = getComposition(db, roomId);
-  const exists = current.cells.some(([s, p]) => s === step && p === pitch);
+  if (!isValidCell(step, pitch, duration) || !voiceExists(db, roomId, voiceId)) return null;
+  const voices = listVoices(db, roomId);
+  const voice = voices.find((v) => v.id === voiceId);
+  if (!voice) return null;
+  const exists = voice.cells.some(([s, p]) => s === step && p === pitch);
   const cells: Cell[] = exists
-    ? current.cells.filter(([s, p]) => !(s === step && p === pitch))
-    : [...current.cells, [step, pitch, duration as DurationCategory]];
-  const next = { bpm: current.bpm, cells };
-  save(db, roomId, next);
-  return next;
+    ? voice.cells.filter(([s, p]) => !(s === step && p === pitch))
+    : [...voice.cells, [step, pitch, duration as Cell[2]]];
+  saveVoiceGrid(db, roomId, voiceId, cells);
+  return getComposition(db, roomId);
 }
 
 export function setTempo(db: DatabaseSync, roomId: string, bpm: number): CompositionState {
-  const current = getComposition(db, roomId);
-  const next = { bpm: clampBpm(bpm), cells: current.cells };
-  save(db, roomId, next);
-  return next;
+  saveBpm(db, roomId, clampBpm(bpm));
+  return getComposition(db, roomId);
+}
+
+export function addVoice(db: DatabaseSync, roomId: string, name?: string): CompositionState | null {
+  const existing = listVoices(db, roomId);
+  if (existing.length >= MAX_VOICES) return null;
+  const trimmedName = (name ?? "").trim();
+  const finalName =
+    trimmedName.length > 0 ? trimmedName.slice(0, MAX_VOICE_NAME_LENGTH) : defaultVoiceName(existing.length);
+  const order = existing.length === 0 ? 0 : Math.max(...existing.map((v) => v.order)) + 1;
+  db.prepare(
+    "INSERT INTO composition_voices (id, room_id, name, sort_order, grid, updated_at) VALUES (?, ?, ?, ?, '[]', ?)",
+  ).run(randomUUID(), roomId, finalName, order, Date.now());
+  return getComposition(db, roomId);
+}
+
+export function removeVoice(db: DatabaseSync, roomId: string, voiceId: string): CompositionState {
+  db.prepare("DELETE FROM composition_voices WHERE id = ? AND room_id = ?").run(voiceId, roomId);
+  return getComposition(db, roomId);
+}
+
+export function renameVoice(db: DatabaseSync, roomId: string, voiceId: string, name: string): CompositionState | null {
+  const trimmed = name.trim();
+  if (trimmed.length === 0 || !voiceExists(db, roomId, voiceId)) return null;
+  db.prepare("UPDATE composition_voices SET name = ?, updated_at = ? WHERE id = ? AND room_id = ?").run(
+    trimmed.slice(0, MAX_VOICE_NAME_LENGTH),
+    Date.now(),
+    voiceId,
+    roomId,
+  );
+  return getComposition(db, roomId);
 }

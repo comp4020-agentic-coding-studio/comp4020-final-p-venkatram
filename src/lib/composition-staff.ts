@@ -1,8 +1,9 @@
-// Renders the shared grid as a real treble staff (SVG, adapted from crit4's
-// staff-svg.ts) instead of a button grid — a duration picker plus
-// click-where-it-goes, the way Musescore's own note input works. Same
-// server-authoritative model as before: no optimistic local update, every
-// click just sends intent and waits for the broadcast.
+// Renders the shared composition as N stacked real treble staves (SVG,
+// adapted from crit4's staff-svg.ts) — one per voice, each independently
+// editable with its own click-where-it-goes interaction, all playing
+// together on the one shared tempo. Same server-authoritative model as
+// before: no optimistic local update, every click just sends intent and
+// waits for the broadcast.
 import {
   type Cell,
   clampBpm,
@@ -12,13 +13,14 @@ import {
   GRID_PITCHES,
   GRID_STEPS,
 } from "../../shared/grid";
+import { MAX_VOICES, type Voice } from "../../shared/composition";
 import { CompositionPlayer } from "./composition-player";
 import { diatonicIndexToY, DURATION_LABELS, pitchToStaffNote } from "./staff-notation";
 import { exportCompositionPdf } from "./staff-pdf";
 import type { SignalSender } from "./webrtc";
 
 export interface CompositionController {
-  applyState: (state: { bpm: number; cells: Cell[] }) => void;
+  applyState: (state: { bpm: number; voices: Voice[] }) => void;
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -47,93 +49,79 @@ function svgEl<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNameM
   return document.createElementNS(SVG_NS, tag);
 }
 
-export function initCompositionGrid(container: HTMLElement, conn: SignalSender, roomName: string): CompositionController {
-  let cells: Cell[] = [];
-  let bpm = DEFAULT_BPM;
-  let selectedDuration: DurationCategory = DEFAULT_DURATION;
+interface VoiceStaff {
+  element: HTMLElement;
+  setPlayheadStep: (step: number | null) => void;
+}
 
-  container.innerHTML = "";
+// One voice's staff: the exact click-target/rendering mechanics that worked
+// for a single shared grid, just parameterized by which voice a click
+// belongs to.
+function buildVoiceStaff(
+  voice: Voice,
+  getSelectedDuration: () => DurationCategory,
+  conn: SignalSender,
+  onRemove: () => void,
+  onRename: (name: string) => void,
+): VoiceStaff {
+  const wrapper = document.createElement("div");
+  wrapper.className = "composition-voice";
 
-  // --- Toolbar: play/stop, tempo, duration picker ---
-  const toolbar = document.createElement("div");
-  toolbar.className = "composition-toolbar";
+  const header = document.createElement("div");
+  header.className = "composition-voice-header";
+  const nameLabel = document.createElement("span");
+  nameLabel.className = "composition-voice-name";
+  nameLabel.textContent = voice.name;
+  nameLabel.title = "Click to rename";
+  nameLabel.tabIndex = 0;
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "btn secondary composition-voice-remove";
+  removeBtn.textContent = "Remove voice";
+  removeBtn.addEventListener("click", onRemove);
+  header.append(nameLabel, removeBtn);
 
-  const playBtn = document.createElement("button");
-  playBtn.type = "button";
-  playBtn.className = "btn";
-  playBtn.textContent = "Play";
-
-  const tempoLabel = document.createElement("label");
-  tempoLabel.className = "muted";
-  tempoLabel.textContent = "Tempo";
-  const tempoInput = document.createElement("input");
-  tempoInput.type = "range";
-  tempoInput.min = "40";
-  tempoInput.max = "220";
-  tempoInput.value = String(DEFAULT_BPM);
-  const tempoValue = document.createElement("span");
-  tempoValue.className = "muted";
-  tempoValue.textContent = `${DEFAULT_BPM} bpm`;
-  tempoLabel.append(tempoInput);
-
-  const durationPicker = document.createElement("div");
-  durationPicker.className = "duration-picker";
-  durationPicker.setAttribute("role", "radiogroup");
-  durationPicker.setAttribute("aria-label", "Note duration to place");
-  const durationButtons = new Map<DurationCategory, HTMLButtonElement>();
-  for (const duration of DURATION_ORDER) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "duration-btn";
-    btn.textContent = DURATION_SYMBOLS[duration];
-    btn.title = `${DURATION_LABELS[duration]} note`;
-    btn.setAttribute("aria-label", `${DURATION_LABELS[duration]} note`);
-    btn.addEventListener("click", () => {
-      selectedDuration = duration;
-      for (const [d, b] of durationButtons) b.classList.toggle("duration-btn-active", d === duration);
+  function startRename(): void {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = nameLabel.textContent ?? "";
+    input.maxLength = 40;
+    input.className = "composition-voice-name-input";
+    nameLabel.replaceWith(input);
+    input.focus();
+    input.select();
+    const commit = (): void => {
+      const value = input.value.trim();
+      input.replaceWith(nameLabel);
+      if (value.length > 0 && value !== nameLabel.textContent) onRename(value);
+    };
+    input.addEventListener("blur", commit);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") input.blur();
+      if (event.key === "Escape") {
+        input.value = nameLabel.textContent ?? "";
+        input.blur();
+      }
     });
-    durationButtons.set(duration, btn);
-    durationPicker.append(btn);
   }
-  durationButtons.get(selectedDuration)?.classList.add("duration-btn-active");
-
-  const exportBtn = document.createElement("button");
-  exportBtn.type = "button";
-  exportBtn.className = "btn secondary";
-  exportBtn.textContent = "Export PDF";
-  const exportError = document.createElement("span");
-  exportError.className = "error-text";
-
-  exportBtn.addEventListener("click", () => {
-    exportError.textContent = "";
-    exportBtn.disabled = true;
-    exportBtn.textContent = "Exporting...";
-    exportCompositionPdf(roomName, cells, bpm)
-      .catch(() => {
-        exportError.textContent = "Couldn't export the PDF — try again.";
-      })
-      .finally(() => {
-        exportBtn.disabled = false;
-        exportBtn.textContent = "Export PDF";
-      });
+  nameLabel.addEventListener("click", startRename);
+  nameLabel.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      startRename();
+    }
   });
 
-  toolbar.append(playBtn, tempoLabel, tempoValue, durationPicker, exportBtn, exportError);
-
-  // --- The staff itself ---
   const scroll = document.createElement("div");
   scroll.className = "staff-scroll";
 
   const svg = svgEl("svg");
-  // Explicit width/height (not just viewBox) so every unit above maps to
-  // exactly one screen pixel — no further scale factor for a click target's
-  // real size to get lost in.
   svg.setAttribute("width", String(VIEW_WIDTH));
   svg.setAttribute("height", String(VIEW_HEIGHT));
   svg.setAttribute("viewBox", `0 -${VIEW_Y_OFFSET} ${VIEW_WIDTH} ${VIEW_HEIGHT}`);
   svg.setAttribute("class", "staff-svg");
   svg.setAttribute("role", "img");
-  svg.setAttribute("aria-label", "Shared musical staff — click a position to add or remove a note");
+  svg.setAttribute("aria-label", `${voice.name} — click a position to add or remove a note`);
 
   for (let line = 0; line < 5; line++) {
     const y = TOP_LINE_Y + line * HALF_LINE_SPACING * 2;
@@ -180,7 +168,7 @@ export function initCompositionGrid(container: HTMLElement, conn: SignalSender, 
       target.setAttribute("height", String(HALF_LINE_SPACING));
       target.setAttribute("aria-label", `step ${step + 1}, pitch ${pitch + 1}`);
       target.addEventListener("click", () => {
-        conn.send({ type: "composition.toggle", step, pitch, duration: selectedDuration });
+        conn.send({ type: "composition.toggle", voiceId: voice.id, step, pitch, duration: getSelectedDuration() });
       });
       targets.append(target);
     }
@@ -191,9 +179,9 @@ export function initCompositionGrid(container: HTMLElement, conn: SignalSender, 
 
   svg.append(playhead, targets, notesLayer);
   scroll.append(svg);
-  container.append(toolbar, scroll);
+  wrapper.append(header, scroll);
 
-  function renderNotes(): void {
+  function renderNotes(cells: Cell[]): void {
     notesLayer.innerHTML = "";
     for (const [step, pitch, duration] of cells) {
       const note = pitchToStaffNote(pitch, duration);
@@ -255,18 +243,152 @@ export function initCompositionGrid(container: HTMLElement, conn: SignalSender, 
     }
   }
 
+  renderNotes(voice.cells);
+
+  return {
+    element: wrapper,
+    setPlayheadStep: (step) => {
+      if (step === null) {
+        playhead.style.display = "none";
+        return;
+      }
+      playhead.style.display = "block";
+      playhead.setAttribute("x", String(NOTE_AREA_X + step * STEP_WIDTH));
+    },
+  };
+}
+
+export function initCompositionGrid(
+  container: HTMLElement,
+  conn: SignalSender,
+  roomId: string,
+  roomName: string,
+): CompositionController {
+  let voices: Voice[] = [];
+  let bpm = DEFAULT_BPM;
+  let selectedDuration: DurationCategory = DEFAULT_DURATION;
+  const staves = new Map<string, VoiceStaff>();
+
+  container.innerHTML = "";
+
+  // --- Toolbar: play/stop, tempo, duration picker ---
+  const toolbar = document.createElement("div");
+  toolbar.className = "composition-toolbar";
+
+  const playBtn = document.createElement("button");
+  playBtn.type = "button";
+  playBtn.className = "btn";
+  playBtn.textContent = "Play";
+
+  const tempoLabel = document.createElement("label");
+  tempoLabel.className = "muted";
+  tempoLabel.textContent = "Tempo";
+  const tempoInput = document.createElement("input");
+  tempoInput.type = "range";
+  tempoInput.min = "40";
+  tempoInput.max = "220";
+  tempoInput.value = String(DEFAULT_BPM);
+  const tempoValue = document.createElement("span");
+  tempoValue.className = "muted";
+  tempoValue.textContent = `${DEFAULT_BPM} bpm`;
+  tempoLabel.append(tempoInput);
+
+  const durationPicker = document.createElement("div");
+  durationPicker.className = "duration-picker";
+  durationPicker.setAttribute("role", "radiogroup");
+  durationPicker.setAttribute("aria-label", "Note duration to place");
+  const durationButtons = new Map<DurationCategory, HTMLButtonElement>();
+  for (const duration of DURATION_ORDER) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "duration-btn";
+    btn.textContent = DURATION_SYMBOLS[duration];
+    btn.title = `${DURATION_LABELS[duration]} note`;
+    btn.setAttribute("aria-label", `${DURATION_LABELS[duration]} note`);
+    btn.addEventListener("click", () => {
+      selectedDuration = duration;
+      for (const [d, b] of durationButtons) b.classList.toggle("duration-btn-active", d === duration);
+    });
+    durationButtons.set(duration, btn);
+    durationPicker.append(btn);
+  }
+  durationButtons.get(selectedDuration)?.classList.add("duration-btn-active");
+
+  const exportBtn = document.createElement("button");
+  exportBtn.type = "button";
+  exportBtn.className = "btn secondary";
+  exportBtn.textContent = "Export PDF";
+  const exportError = document.createElement("span");
+  exportError.className = "error-text";
+
+  exportBtn.addEventListener("click", () => {
+    exportError.textContent = "";
+    exportBtn.disabled = true;
+    exportBtn.textContent = "Exporting...";
+    // One PDF per voice rather than teaching staff-pdf.ts a new multi-staff
+    // layout — it's a plain, hand-kept-in-sync print duplicate of this
+    // file's geometry, not worth complicating for this.
+    Promise.all(voices.map((voice) => exportCompositionPdf(roomId, `${roomName} — ${voice.name}`, voice.cells, bpm)))
+      .catch(() => {
+        exportError.textContent = "Couldn't export the PDF — try again.";
+      })
+      .finally(() => {
+        exportBtn.disabled = false;
+        exportBtn.textContent = "Export PDF";
+      });
+  });
+
+  const addVoiceBtn = document.createElement("button");
+  addVoiceBtn.type = "button";
+  addVoiceBtn.className = "btn secondary";
+  addVoiceBtn.textContent = "+ Add voice";
+  addVoiceBtn.addEventListener("click", () => {
+    conn.send({ type: "composition.add-voice" });
+  });
+
+  toolbar.append(playBtn, tempoLabel, tempoValue, durationPicker, exportBtn, exportError);
+
+  const voicesContainer = document.createElement("div");
+  voicesContainer.className = "composition-voices";
+
+  container.append(toolbar, voicesContainer, addVoiceBtn);
+
+  function rebuildVoices(): void {
+    voicesContainer.innerHTML = "";
+    staves.clear();
+    for (const voice of [...voices].sort((a, b) => a.order - b.order)) {
+      const staff = buildVoiceStaff(
+        voice,
+        () => selectedDuration,
+        conn,
+        () => conn.send({ type: "composition.remove-voice", voiceId: voice.id }),
+        (name) => conn.send({ type: "composition.rename-voice", voiceId: voice.id, name }),
+      );
+      staves.set(voice.id, staff);
+      voicesContainer.append(staff.element);
+    }
+    if (voices.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "muted";
+      empty.textContent = "No voices yet — add one to start composing.";
+      voicesContainer.append(empty);
+    }
+    addVoiceBtn.disabled = voices.length >= MAX_VOICES;
+    addVoiceBtn.title = addVoiceBtn.disabled ? `Up to ${MAX_VOICES} voices per room` : "";
+  }
+
   const player = new CompositionPlayer(
-    () => cells,
+    () => voices.flatMap((voice) => voice.cells),
     () => bpm,
     (step) => {
-      playhead.setAttribute("x", String(NOTE_AREA_X + step * STEP_WIDTH));
+      for (const staff of staves.values()) staff.setPlayheadStep(step);
     },
   );
 
   playBtn.addEventListener("click", () => {
     player.toggle();
     playBtn.textContent = player.isPlaying ? "Stop" : "Play";
-    playhead.style.display = player.isPlaying ? "block" : "none";
+    if (!player.isPlaying) for (const staff of staves.values()) staff.setPlayheadStep(null);
   });
 
   let tempoDebounce: number | undefined;
@@ -279,11 +401,15 @@ export function initCompositionGrid(container: HTMLElement, conn: SignalSender, 
 
   return {
     applyState: (state) => {
-      cells = state.cells;
+      voices = state.voices;
       bpm = clampBpm(state.bpm);
       tempoInput.value = String(bpm);
       tempoValue.textContent = `${bpm} bpm`;
-      renderNotes();
+      // Consistent with the single-voice version's own full-rebuild-per-
+      // update style (renderNotes always cleared and redrew everything) —
+      // rooms are small and updates infrequent, so there's no real cost to
+      // rebuilding the whole voice stack rather than diffing it.
+      rebuildVoices();
     },
   };
 }

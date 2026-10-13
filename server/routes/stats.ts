@@ -17,7 +17,7 @@ export async function handleStatsApi(
   const rooms = (db.prepare("SELECT COUNT(*) AS c FROM rooms").get() as { c: number }).c;
   const lyricsSheets = (db.prepare("SELECT COUNT(*) AS c FROM lyrics").get() as { c: number }).c;
 
-  const compositionGrids = db.prepare("SELECT grid FROM compositions").all() as { grid: string }[];
+  const compositionGrids = db.prepare("SELECT grid FROM composition_voices").all() as { grid: string }[];
   let notesComposed = 0;
   for (const row of compositionGrids) {
     try {
