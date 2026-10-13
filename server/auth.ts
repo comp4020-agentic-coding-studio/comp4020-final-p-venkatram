@@ -16,8 +16,16 @@ const SESSION_COOKIE = "sid";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const SCRYPT_KEYLEN = 64;
 
-function hashPassword(password: string, salt: string): string {
-  return scryptSync(password, salt, SCRYPT_KEYLEN).toString("hex");
+// Exported so room passwords (server/rooms.ts) use this exact scheme too,
+// rather than a second hand-rolled hashing path for a second kind of secret.
+export function hashSecret(secret: string, salt: string): string {
+  return scryptSync(secret, salt, SCRYPT_KEYLEN).toString("hex");
+}
+
+export function verifySecret(secret: string, salt: string, expectedHex: string): boolean {
+  const candidate = Buffer.from(hashSecret(secret, salt), "hex");
+  const actual = Buffer.from(expectedHex, "hex");
+  return candidate.length === actual.length && timingSafeEqual(candidate, actual);
 }
 
 export function isValidEmail(email: string): boolean {
@@ -37,7 +45,7 @@ export function createUser(db: DatabaseSync, email: string, displayName: string,
 
   const id = randomUUID();
   const salt = randomBytes(16).toString("hex");
-  const passwordHash = hashPassword(password, salt);
+  const passwordHash = hashSecret(password, salt);
   db.prepare(
     "INSERT INTO users (id, email, display_name, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?, ?)",
   ).run(id, normalisedEmail, displayName.trim(), passwordHash, salt, Date.now());
@@ -58,9 +66,7 @@ export function verifyLogin(db: DatabaseSync, email: string, password: string): 
   const row = db.prepare("SELECT * FROM users WHERE email = ?").get(normalisedEmail) as UserRow | undefined;
   if (!row) throw new AuthError("Incorrect email or password.");
 
-  const candidate = Buffer.from(hashPassword(password, row.password_salt), "hex");
-  const actual = Buffer.from(row.password_hash, "hex");
-  if (candidate.length !== actual.length || !timingSafeEqual(candidate, actual)) {
+  if (!verifySecret(password, row.password_salt, row.password_hash)) {
     throw new AuthError("Incorrect email or password.");
   }
   return { id: row.id, email: row.email, displayName: row.display_name };

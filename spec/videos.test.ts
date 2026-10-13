@@ -25,6 +25,7 @@ it("rejects anything that isn't a recognizable YouTube video", () => {
 const baseUrl = inject("baseUrl");
 const wsBaseUrl = baseUrl.replace(/^http/, "ws");
 const uniqueEmail = () => `video-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
+const ROOM_PASSWORD = "correct-horse-battery-room";
 
 async function signUp(): Promise<string> {
   const res = await fetch(new URL("/api/signup", baseUrl), {
@@ -39,7 +40,7 @@ async function createRoom(cookie: string): Promise<string> {
   const res = await fetch(new URL("/api/rooms", baseUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: cookie },
-    body: JSON.stringify({ name: "Video check room" }),
+    body: JSON.stringify({ name: "Video check room", password: ROOM_PASSWORD }),
   });
   const body = (await res.json()) as { room: { id: string } };
   return body.room.id;
@@ -66,6 +67,22 @@ function nextMessage(ws: WebSocket, predicate: (msg: Record<string, unknown>) =>
   });
 }
 
+// The room gate means a non-owner can't just open /ws — they must submit the
+// password and be admitted by the live owner first.
+async function joinAsNonOwner(ownerWs: WebSocket, roomId: string, cookie: string): Promise<void> {
+  const ownerSeesRequest = nextMessage(ownerWs, (m) => m.type === "lobby.request");
+  const joinRequest = fetch(new URL(`/api/rooms/${roomId}/join-request`, baseUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({ password: ROOM_PASSWORD }),
+  });
+  const request = await ownerSeesRequest;
+  ownerWs.send(JSON.stringify({ type: "lobby.admit", userId: request.userId }));
+  const res = await joinRequest;
+  const body = (await res.json()) as { admitted?: boolean };
+  if (!body.admitted) throw new Error("expected to be admitted");
+}
+
 it("rejects a POST that isn't a YouTube link", async () => {
   const cookie = await signUp();
   const roomId = await createRoom(cookie);
@@ -84,6 +101,7 @@ it("sets a video and broadcasts it to everyone else in the room", async () => {
   await nextMessage(ownerWs, (m) => m.type === "video.sync");
 
   const viewerCookie = await signUp();
+  await joinAsNonOwner(ownerWs, roomId, viewerCookie);
   const viewerWs = await connect(roomId, viewerCookie);
   await nextMessage(viewerWs, (m) => m.type === "video.sync" && m.youtubeId === null);
 
@@ -100,6 +118,7 @@ it("sets a video and broadcasts it to everyone else in the room", async () => {
 
   // A late joiner sees the persisted video immediately, not an empty state.
   const lateCookie = await signUp();
+  await joinAsNonOwner(ownerWs, roomId, lateCookie);
   const lateWs = await connect(roomId, lateCookie);
   const sync = await nextMessage(lateWs, (m) => m.type === "video.sync");
   expect(sync.youtubeId).toBe("dQw4w9WgXcQ");

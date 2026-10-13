@@ -1,13 +1,14 @@
 import { expect, inject, it } from "vitest";
 import { WebSocket } from "ws";
 
-// Upload, parsing (real LRC timestamps vs. the plain-text fallback), and the
-// leader-driven transport broadcast are all mechanically checkable. Whether
-// the cursor actually looks right following along a real song is a person's
-// call at the crit.
+// Upload and parsing (real LRC timestamps vs. the plain-text fallback) are
+// mechanically checkable, as is a comment reaching everyone in the room.
+// Whether the lyrics panel actually reads well is a person's call at the
+// crit.
 const baseUrl = inject("baseUrl");
 const wsBaseUrl = baseUrl.replace(/^http/, "ws");
 const uniqueEmail = () => `lyrics-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
+const ROOM_PASSWORD = "correct-horse-battery-room";
 
 async function signUp(): Promise<string> {
   const res = await fetch(new URL("/api/signup", baseUrl), {
@@ -22,7 +23,7 @@ async function createRoom(cookie: string): Promise<string> {
   const res = await fetch(new URL("/api/rooms", baseUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: cookie },
-    body: JSON.stringify({ name: "Lyrics check" }),
+    body: JSON.stringify({ name: "Lyrics check", password: ROOM_PASSWORD }),
   });
   const body = (await res.json()) as { room: { id: string } };
   return body.room.id;
@@ -47,6 +48,22 @@ function nextMessage(ws: WebSocket, predicate: (msg: Record<string, unknown>) =>
       }
     });
   });
+}
+
+// The room gate means a non-owner can't just open /ws — they must submit the
+// password and be admitted by the live owner first.
+async function joinAsNonOwner(ownerWs: WebSocket, roomId: string, cookie: string): Promise<void> {
+  const ownerSeesRequest = nextMessage(ownerWs, (m) => m.type === "lobby.request");
+  const joinRequest = fetch(new URL(`/api/rooms/${roomId}/join-request`, baseUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify({ password: ROOM_PASSWORD }),
+  });
+  const request = await ownerSeesRequest;
+  ownerWs.send(JSON.stringify({ type: "lobby.admit", userId: request.userId }));
+  const res = await joinRequest;
+  const body = (await res.json()) as { admitted?: boolean };
+  if (!body.admitted) throw new Error("expected to be admitted");
 }
 
 it("parses real LRC timestamps on upload", async () => {
@@ -87,6 +104,7 @@ it("broadcasts lyrics.update to everyone when one person uploads", async () => {
   await nextMessage(ownerWs, (m) => m.type === "lyrics.sync");
 
   const viewerCookie = await signUp();
+  await joinAsNonOwner(ownerWs, roomId, viewerCookie);
   const viewerWs = await connect(roomId, viewerCookie);
   await nextMessage(viewerWs, (m) => m.type === "lyrics.sync");
 
@@ -103,22 +121,59 @@ it("broadcasts lyrics.update to everyone when one person uploads", async () => {
   viewerWs.close();
 });
 
-it("drives the lyrics transport for everyone when one person presses play", async () => {
+it("broadcasts a lyrics comment to everyone, anchored to the right line", async () => {
   const ownerCookie = await signUp();
   const roomId = await createRoom(ownerCookie);
   const ownerWs = await connect(roomId, ownerCookie);
   await nextMessage(ownerWs, (m) => m.type === "lyrics.sync");
 
+  // Register the listener before the action that triggers the broadcast —
+  // uploading and then awaiting a match on the same socket risks the
+  // broadcast arriving before nextMessage's own listener is attached.
+  const ownerSeesUpdate = nextMessage(ownerWs, (m) => m.type === "lyrics.update");
+  await fetch(new URL(`/api/rooms/${roomId}/lyrics`, baseUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: JSON.stringify({ title: "Round", raw: "Row row row your boat\nGently down the stream" }),
+  });
+  await ownerSeesUpdate;
+
   const viewerCookie = await signUp();
+  await joinAsNonOwner(ownerWs, roomId, viewerCookie);
   const viewerWs = await connect(roomId, viewerCookie);
   await nextMessage(viewerWs, (m) => m.type === "lyrics.sync");
 
-  const viewerSeesPlay = nextMessage(viewerWs, (m) => m.type === "lyrics.transport" && m.playing === true);
-  ownerWs.send(JSON.stringify({ type: "lyrics.play" }));
-  const transport = await viewerSeesPlay;
-  expect(transport.playing).toBe(true);
-  expect(typeof transport.positionMs).toBe("number");
+  const viewerSeesComment = nextMessage(viewerWs, (m) => m.type === "lyrics.comment.add");
+  ownerWs.send(
+    JSON.stringify({ type: "lyrics.comment.add", lineIndex: 0, startOffset: 0, endOffset: 3, text: "Repeat this" }),
+  );
+  const message = await viewerSeesComment;
+  const comment = message.comment as { lineIndex: number; startOffset: number; endOffset: number; text: string };
+  expect(comment.lineIndex).toBe(0);
+  expect(comment.startOffset).toBe(0);
+  expect(comment.endOffset).toBe(3);
+  expect(comment.text).toBe("Repeat this");
 
   ownerWs.close();
   viewerWs.close();
+});
+
+it("ignores a comment anchored past the end of its line", async () => {
+  const ownerCookie = await signUp();
+  const roomId = await createRoom(ownerCookie);
+  const ownerWs = await connect(roomId, ownerCookie);
+  await nextMessage(ownerWs, (m) => m.type === "lyrics.sync");
+
+  const ownerSeesUpdate = nextMessage(ownerWs, (m) => m.type === "lyrics.update");
+  await fetch(new URL(`/api/rooms/${roomId}/lyrics`, baseUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: ownerCookie },
+    body: JSON.stringify({ title: "Short", raw: "Hi" }),
+  });
+  await ownerSeesUpdate;
+
+  ownerWs.send(JSON.stringify({ type: "lyrics.comment.add", lineIndex: 0, startOffset: 0, endOffset: 999, text: "nope" }));
+  await expect(nextMessage(ownerWs, (m) => m.type === "lyrics.comment.add", 300)).rejects.toThrow();
+
+  ownerWs.close();
 });

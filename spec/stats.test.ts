@@ -30,7 +30,7 @@ it("reflects a newly created room in the room count", async () => {
   await fetch(new URL("/api/rooms", baseUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: cookie },
-    body: JSON.stringify({ name: "Stats check room" }),
+    body: JSON.stringify({ name: "Stats check room", password: "correct-horse-battery-room" }),
   });
 
   const after = (await (await fetch(new URL("/api/stats", baseUrl))).json()) as { rooms: number };

@@ -9,6 +9,7 @@ import { WebSocket } from "ws";
 const baseUrl = inject("baseUrl");
 const wsBaseUrl = baseUrl.replace(/^http/, "ws");
 const uniqueEmail = () => `realtime-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
+const ROOM_PASSWORD = "correct-horse-battery-room";
 
 interface SignedUpUser {
   id: string;
@@ -30,10 +31,26 @@ async function createRoom(owner: SignedUpUser, name: string): Promise<string> {
   const res = await fetch(new URL("/api/rooms", baseUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: owner.cookie },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, password: ROOM_PASSWORD }),
   });
   const body = (await res.json()) as { room: { id: string } };
   return body.room.id;
+}
+
+// The room gate means a non-owner can't just open /ws — they must submit the
+// password and be admitted by the live owner first.
+async function joinAsNonOwner(ownerWs: WebSocket, roomId: string, user: SignedUpUser): Promise<void> {
+  const ownerSeesRequest = waitForMessage(ownerWs, (m) => m.type === "lobby.request", 1000);
+  const joinRequest = fetch(new URL(`/api/rooms/${roomId}/join-request`, baseUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: user.cookie },
+    body: JSON.stringify({ password: ROOM_PASSWORD }),
+  });
+  const request = await ownerSeesRequest;
+  ownerWs.send(JSON.stringify({ type: "lobby.admit", userId: request.userId }));
+  const res = await joinRequest;
+  const body = (await res.json()) as { admitted?: boolean };
+  if (!body.admitted) throw new Error("expected to be admitted");
 }
 
 function waitForMessage(ws: WebSocket, predicate: (msg: Record<string, unknown>) => boolean, timeoutMs: number): Promise<Record<string, unknown>> {
@@ -64,6 +81,7 @@ it("propagates presence between two real sessions within ~1s", async () => {
 
   const aliceWs = await connect(roomId, alice.cookie);
   await waitForMessage(aliceWs, (msg) => msg.type === "presence.sync", 1000);
+  await joinAsNonOwner(aliceWs, roomId, bob);
 
   const bobJoined = waitForMessage(
     aliceWs,

@@ -9,6 +9,7 @@ import { WebSocket } from "ws";
 const baseUrl = inject("baseUrl");
 const wsBaseUrl = baseUrl.replace(/^http/, "ws");
 const uniqueEmail = () => `signal-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`;
+const ROOM_PASSWORD = "correct-horse-battery-room";
 
 interface SignedUpUser {
   id: string;
@@ -30,7 +31,7 @@ async function createRoom(owner: SignedUpUser): Promise<string> {
   const res = await fetch(new URL("/api/rooms", baseUrl), {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: owner.cookie },
-    body: JSON.stringify({ name: "Signaling check" }),
+    body: JSON.stringify({ name: "Signaling check", password: ROOM_PASSWORD }),
   });
   const body = (await res.json()) as { room: { id: string } };
   return body.room.id;
@@ -57,6 +58,22 @@ function nextMessage(ws: WebSocket, predicate: (msg: Record<string, unknown>) =>
   });
 }
 
+// The room gate means a non-owner can't just open /ws — they must submit the
+// password and be admitted by the live owner first.
+async function joinAsNonOwner(ownerWs: WebSocket, roomId: string, user: SignedUpUser): Promise<void> {
+  const ownerSeesRequest = nextMessage(ownerWs, (m) => m.type === "lobby.request");
+  const joinRequest = fetch(new URL(`/api/rooms/${roomId}/join-request`, baseUrl), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: user.cookie },
+    body: JSON.stringify({ password: ROOM_PASSWORD }),
+  });
+  const request = await ownerSeesRequest;
+  ownerWs.send(JSON.stringify({ type: "lobby.admit", userId: request.userId }));
+  const res = await joinRequest;
+  const body = (await res.json()) as { admitted?: boolean };
+  if (!body.admitted) throw new Error("expected to be admitted");
+}
+
 it("relays a webrtc offer to the right peer, tagged with the sender", async () => {
   const alice = await signUp("Alice Signal");
   const bob = await signUp("Bob Signal");
@@ -65,8 +82,10 @@ it("relays a webrtc offer to the right peer, tagged with the sender", async () =
 
   const aliceWs = await connect(roomId, alice.cookie);
   await nextMessage(aliceWs, (m) => m.type === "presence.sync");
+  await joinAsNonOwner(aliceWs, roomId, bob);
   const bobWs = await connect(roomId, bob.cookie);
   await nextMessage(bobWs, (m) => m.type === "presence.sync");
+  await joinAsNonOwner(aliceWs, roomId, carol);
   const carolWs = await connect(roomId, carol.cookie);
   await nextMessage(carolWs, (m) => m.type === "presence.sync");
 
