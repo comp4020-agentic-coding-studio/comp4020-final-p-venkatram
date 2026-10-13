@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { sessionTokenFromRequest, userForToken } from "../auth.ts";
 import { getLyrics, saveLyrics } from "../lyrics.ts";
+import { clearComments } from "../lyrics-comments.ts";
 import { getRoom } from "../rooms.ts";
 import { readJsonBody, sendJson } from "../http-util.ts";
 import { broadcast } from "../realtime/presence.ts";
@@ -42,7 +43,10 @@ export async function handleLyricsApi(
   if (req.method === "POST") {
     const body = await readJsonBody<UploadLyricsBody>(req);
     const document = saveLyrics(db, roomId, body.title ?? "", body.raw ?? "");
-    broadcast(roomId, { type: "lyrics.update", ...document });
+    // New lyrics means the old line numbers no longer mean anything — rather
+    // than guess at re-anchoring, comments on this room's lyrics start over.
+    clearComments(db, roomId);
+    broadcast(roomId, { type: "lyrics.update", ...document, comments: [] });
     logEvent("lyrics.upload", { roomId, userId: user.id, lineCount: document.lines.length });
     sendJson(res, 200, { lyrics: document });
     return true;
