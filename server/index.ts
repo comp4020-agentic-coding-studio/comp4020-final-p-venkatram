@@ -16,6 +16,7 @@ import { handleActivityApi } from "./routes/activity.ts";
 import { handleAuthApi } from "./routes/auth.ts";
 import { handleRoomsApi } from "./routes/rooms.ts";
 import { handleLyricsApi } from "./routes/lyrics.ts";
+import { handleLibraryApi } from "./routes/library.ts";
 import { handleStatsApi } from "./routes/stats.ts";
 import { handleVideosApi } from "./routes/videos.ts";
 import { attachWebSocketServer } from "./ws.ts";
@@ -28,6 +29,7 @@ const db = getDb(); // boots the schema before the first request can touch it
 async function handleApi(req: IncomingMessage, res: ServerResponse, path: string): Promise<boolean> {
   if (await handleAuthApi(req, res, path, db)) return true;
   if (await handleLyricsApi(req, res, path, db)) return true;
+  if (await handleLibraryApi(req, res, path, db)) return true;
   if (await handleVideosApi(req, res, path, db)) return true;
   if (await handleRoomsApi(req, res, path, db)) return true;
   if (await handleStatsApi(req, res, path, db)) return true;

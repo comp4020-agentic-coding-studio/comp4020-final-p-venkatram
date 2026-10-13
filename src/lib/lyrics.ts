@@ -1,26 +1,22 @@
-// The karaoke cursor: line-level, not word-level — a real LRC upload
-// (`[mm:ss.xx]text` per line) gets accurate timing, a plain paste gets
-// evenly-spaced fallback lines (shared/lyrics.ts), either way there's a
-// cursor to follow. Position is leader-driven: whoever presses play
-// broadcasts a transport update (server/realtime/lyrics-transport.ts), and
-// every client — including the leader's own — derives "where's the cursor
-// now" from its own monotonic clock (performance.now()) anchored to the
-// position at the moment that update arrived, never from comparing wall
-// clocks across machines.
+// The lyrics panel: upload a sheet (LRC timestamps or plain text,
+// shared/lyrics.ts), read it, and comment on any stretch of it, Google-Docs
+// style (src/lib/lyrics-comments.ts owns the selection-to-comment UI and the
+// marked-up line rendering). There's no leader-driven playback cursor here
+// anymore — this panel is a shared, commentable document, not a transport.
 import type { LyricLine } from "../../shared/lyrics";
+import { exportLyricsPdf } from "./lyrics-pdf";
+import { initLyricsComments, type LyricsComment, type LyricsCommentsApi } from "./lyrics-comments";
 import type { SignalSender } from "./webrtc";
 
 export interface LyricsController {
-  applySync: (doc: { title: string | null; lines: LyricLine[]; playing: boolean; positionMs: number }) => void;
-  applyContent: (doc: { title: string | null; lines: LyricLine[] }) => void;
-  applyTransport: (transport: { playing: boolean; positionMs: number }) => void;
+  applySync: (doc: { title: string | null; lines: LyricLine[]; comments: LyricsComment[] }) => void;
+  applyContent: (doc: { title: string | null; lines: LyricLine[]; comments: LyricsComment[] }) => void;
+  applyCommentAdd: (comment: LyricsComment) => void;
 }
 
-export function initLyrics(container: HTMLElement, roomId: string, conn: SignalSender): LyricsController {
+export function initLyrics(container: HTMLElement, roomId: string, roomName: string, conn: SignalSender): LyricsController {
+  let title: string | null = null;
   let lines: LyricLine[] = [];
-  let playing = false;
-  let anchorPerfMs = performance.now();
-  let anchorPositionMs = 0;
 
   container.innerHTML = "";
 
@@ -31,7 +27,7 @@ export function initLyrics(container: HTMLElement, roomId: string, conn: SignalS
       <input id="lyrics-title" name="title" type="text" maxlength="120" />
     </div>
     <div class="field">
-      <label for="lyrics-raw">Lyrics (LRC "[mm:ss.xx]text" per line for timed sync, or just paste plain lines)</label>
+      <label for="lyrics-raw">Lyrics (LRC "[mm:ss.xx]text" per line for timed reference, or just paste plain lines)</label>
       <textarea id="lyrics-raw" name="raw" rows="6"></textarea>
     </div>
   `;
@@ -47,44 +43,33 @@ export function initLyrics(container: HTMLElement, roomId: string, conn: SignalS
   const titleEl = document.createElement("h3");
   titleEl.style.marginBottom = "0.25rem";
 
-  const transportRow = document.createElement("div");
-  transportRow.style.display = "flex";
-  transportRow.style.alignItems = "center";
-  transportRow.style.gap = "0.5rem";
-  transportRow.style.margin = "0.5rem 0";
-  const playBtn = document.createElement("button");
-  playBtn.type = "button";
-  playBtn.className = "btn";
-  playBtn.textContent = "Play";
-  const restartBtn = document.createElement("button");
-  restartBtn.type = "button";
-  restartBtn.className = "btn secondary";
-  restartBtn.textContent = "Restart";
-  const emptyHint = document.createElement("span");
-  emptyHint.className = "muted";
-  emptyHint.textContent = "Type or paste lyrics above to enable playback.";
-  transportRow.append(playBtn, restartBtn, emptyHint);
+  const exportRow = document.createElement("div");
+  exportRow.style.display = "flex";
+  exportRow.style.alignItems = "center";
+  exportRow.style.gap = "0.5rem";
+  exportRow.style.margin = "0.5rem 0";
+  const exportBtn = document.createElement("button");
+  exportBtn.type = "button";
+  exportBtn.className = "btn secondary";
+  exportBtn.textContent = "Export PDF";
+  const exportError = document.createElement("span");
+  exportError.className = "error-text";
+  exportRow.append(exportBtn, exportError);
 
   const linesEl = document.createElement("div");
   linesEl.className = "lyrics-lines";
 
-  container.append(uploadForm, titleEl, transportRow, linesEl);
+  const commentsPanel = document.createElement("aside");
+  commentsPanel.className = "lyrics-comments-panel";
 
-  // Enabled as soon as there's something to play — either already-synced
-  // lines, or text sitting in the box that hasn't been uploaded yet (Play
-  // and Restart below upload it first, automatically, rather than making
-  // that a separate required step before they'll do anything).
-  function updateTransportAvailability(): void {
-    const hasSomethingToPlay = lines.length > 0 || rawInput.value.trim().length > 0;
-    playBtn.disabled = !hasSomethingToPlay;
-    restartBtn.disabled = !hasSomethingToPlay;
-    emptyHint.hidden = hasSomethingToPlay;
-  }
-  updateTransportAvailability();
-  rawInput.addEventListener("input", updateTransportAvailability);
+  container.append(uploadForm, titleEl, exportRow, linesEl, commentsPanel);
 
-  // Shared by the form's own submit and by Play/Restart auto-saving
-  // whatever's currently typed — one path, so they can't drift apart.
+  const comments: LyricsCommentsApi = initLyricsComments({
+    linesContainer: linesEl,
+    panelContainer: commentsPanel,
+    send: (msg) => conn.send(msg),
+  });
+
   function uploadLyrics(): Promise<void> {
     return fetch(`/api/rooms/${encodeURIComponent(roomId)}/lyrics`, {
       method: "POST",
@@ -104,20 +89,23 @@ export function initLyrics(container: HTMLElement, roomId: string, conn: SignalS
     void uploadLyrics();
   });
 
-  // If there's unsaved text in the box, save it first — so Play always
-  // plays what's actually on screen, not whatever was last explicitly
-  // uploaded, and typing or pasting lyrics is itself enough to make these
-  // buttons do something, without a separate required upload step first.
-  async function withLatestLyricsSaved(run: () => void): Promise<void> {
-    if (rawInput.value.trim().length > 0) await uploadLyrics();
-    run();
-  }
+  // Export needs the flat comment list; comments.ts owns per-line lookups
+  // for rendering, so this panel keeps its own parallel flat copy just for
+  // the PDF.
+  let lastRenderedComments: LyricsComment[] = [];
 
-  playBtn.addEventListener("click", () => {
-    void withLatestLyricsSaved(() => conn.send({ type: playing ? "lyrics.pause" : "lyrics.play" }));
-  });
-  restartBtn.addEventListener("click", () => {
-    void withLatestLyricsSaved(() => conn.send({ type: "lyrics.seek", positionMs: 0 }));
+  exportBtn.addEventListener("click", () => {
+    exportError.textContent = "";
+    exportBtn.disabled = true;
+    exportBtn.textContent = "Exporting...";
+    void exportLyricsPdf(roomId, roomName, title, lines, lastRenderedComments)
+      .catch(() => {
+        exportError.textContent = "Couldn't export the PDF — try again.";
+      })
+      .finally(() => {
+        exportBtn.disabled = false;
+        exportBtn.textContent = "Export PDF";
+      });
   });
 
   function renderLines(): void {
@@ -125,64 +113,33 @@ export function initLyrics(container: HTMLElement, roomId: string, conn: SignalS
     lines.forEach((line, index) => {
       const p = document.createElement("p");
       p.className = "lyrics-line";
-      p.textContent = line.text;
       p.dataset.index = String(index);
-      p.addEventListener("click", () => conn.send({ type: "lyrics.seek", positionMs: line.time }));
+      comments.renderLineContent(p, index, line.text);
       linesEl.append(p);
     });
   }
 
-  function currentPositionMs(): number {
-    return playing ? anchorPositionMs + (performance.now() - anchorPerfMs) : anchorPositionMs;
-  }
-
-  function currentLineIndex(): number {
-    const position = currentPositionMs();
-    let index = -1;
-    for (let i = 0; i < lines.length; i++) {
-      if ((lines[i]?.time ?? 0) <= position) index = i;
-      else break;
-    }
-    return index;
-  }
-
-  function tick(): void {
-    const active = currentLineIndex();
-    for (const el of linesEl.querySelectorAll<HTMLParagraphElement>(".lyrics-line")) {
-      const isActive = Number(el.dataset.index) === active;
-      el.classList.toggle("lyrics-line-active", isActive);
-      if (isActive) el.scrollIntoView({ block: "center", behavior: "smooth" });
-    }
-    requestAnimationFrame(tick);
-  }
-  // Left running for the room page's lifetime — navigating away tears down
-  // the whole page, which stops this along with everything else.
-  requestAnimationFrame(tick);
-
   return {
     applySync: (doc) => {
+      title = doc.title;
       lines = doc.lines;
-      titleEl.textContent = doc.title ?? "No lyrics uploaded yet";
-      playing = doc.playing;
-      anchorPositionMs = doc.positionMs;
-      anchorPerfMs = performance.now();
-      playBtn.textContent = playing ? "Pause" : "Play";
-      updateTransportAvailability();
+      lastRenderedComments = doc.comments;
+      titleEl.textContent = title ?? "No lyrics uploaded yet";
+      comments.setComments(doc.comments);
       renderLines();
     },
     applyContent: (doc) => {
-      // A fresh upload mid-session: new words, but the room's current
-      // playback position isn't this message's to touch.
+      title = doc.title;
       lines = doc.lines;
-      titleEl.textContent = doc.title ?? "No lyrics uploaded yet";
-      updateTransportAvailability();
+      lastRenderedComments = doc.comments;
+      titleEl.textContent = title ?? "No lyrics uploaded yet";
+      comments.setComments(doc.comments);
       renderLines();
     },
-    applyTransport: (transport) => {
-      playing = transport.playing;
-      anchorPositionMs = transport.positionMs;
-      anchorPerfMs = performance.now();
-      playBtn.textContent = playing ? "Pause" : "Play";
+    applyCommentAdd: (comment) => {
+      lastRenderedComments = [...lastRenderedComments, comment];
+      comments.addComment(comment);
+      renderLines();
     },
   };
 }

@@ -1,18 +1,23 @@
 import { requireSession } from "./session";
 import { connectToRoom, type PresentUser, type RoomConnection } from "./room-connection";
 import { askForMediaConsent } from "./media-consent";
+import { askForRoomGate } from "./room-gate";
+import { initLobbyAdmin, type LobbyAdminController, type PendingRequest } from "./lobby-admin";
 import { RoomMedia } from "./webrtc";
 import { initCompositionGrid } from "./composition-staff";
-import type { Cell } from "../../shared/grid";
+import type { Voice } from "../../shared/composition";
 import { initLyrics } from "./lyrics";
 import type { LyricLine } from "../../shared/lyrics";
+import type { LyricsComment } from "./lyrics-comments";
 import { initRecordingPanel } from "./recording-panel";
+import { initLibraryPanel } from "./library-panel";
 import { initMediaControls } from "./media-controls";
 import { initKaraoke } from "./karaoke";
 
 interface Room {
   id: string;
   name: string;
+  ownerId: string;
 }
 
 function renderPresence(list: HTMLElement, users: PresentUser[], selfId: string): void {
@@ -97,10 +102,40 @@ export function initRoomPage(): void {
       const nameEl = document.getElementById("room-name");
       if (nameEl) nameEl.textContent = data.room.name;
 
+      const isOwner = data.room.ownerId === self.id;
+      if (!isOwner) {
+        const passwordGateRoot = document.getElementById("password-gate-root");
+        const lobbyWaitRoot = document.getElementById("lobby-wait-root");
+        if (passwordGateRoot && lobbyWaitRoot) {
+          const gate = await askForRoomGate(passwordGateRoot, lobbyWaitRoot, roomId);
+          if (!gate.admitted) return; // lobby-wait-root is already showing the "not let in" state
+        }
+      }
+
       const consentRoot = document.getElementById("consent-root");
       const localStream = consentRoot ? await askForMediaConsent(consentRoot) : null;
 
       root?.removeAttribute("hidden");
+
+      let lobbyAdmin: LobbyAdminController | null = null;
+      if (isOwner) {
+        const lobbyAdminRoot = document.getElementById("lobby-admin-root");
+        if (lobbyAdminRoot) lobbyAdmin = initLobbyAdmin(lobbyAdminRoot, (msg) => conn.send(msg));
+      }
+
+      const copyLinkBtn = document.getElementById("copy-room-link");
+      if (copyLinkBtn instanceof HTMLButtonElement) {
+        const defaultLabel = copyLinkBtn.textContent ?? "Copy Link";
+        copyLinkBtn.addEventListener("click", () => {
+          void navigator.clipboard.writeText(window.location.href).then(() => {
+            copyLinkBtn.textContent = "Copied!";
+            window.setTimeout(() => {
+              copyLinkBtn.textContent = defaultLabel;
+            }, 1500);
+          });
+        });
+      }
+
       const videoGrid = document.getElementById("video-grid");
       const presenceList = document.getElementById("presence-list");
       const presentUsers = new Map<string, PresentUser>();
@@ -122,9 +157,11 @@ export function initRoomPage(): void {
 
       let conn: RoomConnection;
       const compositionController = compositionRoot
-        ? initCompositionGrid(compositionRoot, { send: (msg) => conn.send(msg) }, data.room.name)
+        ? initCompositionGrid(compositionRoot, { send: (msg) => conn.send(msg) }, roomId, data.room.name)
         : null;
-      const lyricsController = lyricsRoot ? initLyrics(lyricsRoot, roomId, { send: (msg) => conn.send(msg) }) : null;
+      const lyricsController = lyricsRoot
+        ? initLyrics(lyricsRoot, roomId, data.room.name, { send: (msg) => conn.send(msg) })
+        : null;
       const karaokeRoot = document.getElementById("karaoke-root");
       const karaokeController = karaokeRoot ? initKaraoke(karaokeRoot, roomId) : null;
       const remoteStreams = new Map<string, MediaStream>();
@@ -145,11 +182,15 @@ export function initRoomPage(): void {
       );
       media.setLocalStream(localStream);
 
-      const recordingRoot = document.getElementById("recording-root");
+      const recordingRoot = document.getElementById("recording-controls-root");
+      const libraryRoot = document.getElementById("library-root");
+      const libraryPanel = libraryRoot ? initLibraryPanel(libraryRoot, roomId, isOwner) : null;
       if (recordingRoot) {
         initRecordingPanel(recordingRoot, {
+          roomId,
           getLocalStream: () => localStream,
           getRemoteStreams: () => [...remoteStreams.values()],
+          onSaved: () => libraryPanel?.reload(),
         });
       }
 
@@ -183,26 +224,31 @@ export function initRoomPage(): void {
         },
         onMessage: (message) => {
           if (message.type === "composition.sync" || message.type === "composition.update") {
-            compositionController?.applyState({ bpm: Number(message.bpm), cells: (message.cells as Cell[]) ?? [] });
+            compositionController?.applyState({ bpm: Number(message.bpm), voices: (message.voices as Voice[]) ?? [] });
           } else if (message.type === "lyrics.sync") {
             lyricsController?.applySync({
               title: (message.title as string | null) ?? null,
               lines: (message.lines as LyricLine[]) ?? [],
-              playing: Boolean(message.playing),
-              positionMs: Number(message.positionMs) || 0,
+              comments: (message.comments as LyricsComment[]) ?? [],
             });
           } else if (message.type === "lyrics.update") {
             lyricsController?.applyContent({
               title: (message.title as string | null) ?? null,
               lines: (message.lines as LyricLine[]) ?? [],
+              comments: (message.comments as LyricsComment[]) ?? [],
             });
-          } else if (message.type === "lyrics.transport") {
-            lyricsController?.applyTransport({
-              playing: Boolean(message.playing),
-              positionMs: Number(message.positionMs) || 0,
-            });
+          } else if (message.type === "lyrics.comment.add") {
+            lyricsController?.applyCommentAdd(message.comment as LyricsComment);
           } else if (message.type === "video.sync" || message.type === "video.update") {
             karaokeController?.applyVideo({ youtubeId: (message.youtubeId as string | null) ?? null });
+          } else if (message.type === "lobby.sync") {
+            lobbyAdmin?.setPending((message.pending as PendingRequest[]) ?? []);
+          } else if (message.type === "lobby.request") {
+            lobbyAdmin?.addPending({
+              userId: String(message.userId),
+              displayName: String(message.displayName),
+              requestedAt: Number(message.requestedAt) || Date.now(),
+            });
           } else {
             void media.handleSignal(message);
           }

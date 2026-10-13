@@ -8,16 +8,22 @@ import Layout from "../../layouts/Layout.astro";
     <p class="muted">Check the link, or <a href="/rooms/">go back to your rooms</a>.</p>
   </div>
 
+  <div id="password-gate-root"></div>
+  <div id="lobby-wait-root" hidden></div>
+
   <div id="consent-root"></div>
 
   <div id="room-root" hidden>
     <h1 id="room-name"></h1>
-    <div class="banner">
-      <p>Share this page's link to invite someone else in. Switch views from the menu (top left).</p>
-    </div>
+
+    <div id="lobby-admin-root"></div>
 
     <div class="room-panels">
       <section id="panel-collab" class="room-panel">
+        <div class="banner">
+          <p>Share this page's link to invite someone else in. Switch views from the menu (top left).</p>
+          <button type="button" id="copy-room-link" class="btn secondary">Copy Link</button>
+        </div>
         <div class="collab-layout">
           <div class="collab-main">
             <div id="video-grid" class="video-grid"></div>
@@ -35,27 +41,32 @@ import Layout from "../../layouts/Layout.astro";
               <h2 style="margin-top:0;">Here now</h2>
               <ul id="presence-list" style="list-style:none; padding:0; margin:0;"></ul>
             </section>
+
+            <section class="card" style="max-width:24rem;">
+              <h2 style="margin-top:0;">Recording</h2>
+              <div id="recording-controls-root"></div>
+            </section>
           </div>
 
           <div class="collab-side card">
             <h2 style="margin-top:0;">Lyrics</h2>
-            <p class="muted">Anyone can upload or press play — the cursor follows whoever's leading.</p>
+            <p class="muted">Select text in the lyrics to comment on it, like Google Docs.</p>
             <div id="lyrics-root"></div>
           </div>
         </div>
       </section>
 
-      <section id="panel-record" class="room-panel" hidden>
+      <section id="panel-library" class="room-panel" hidden>
         <div class="card">
-          <h2 style="margin-top:0;">Recordings library</h2>
-          <div id="recording-root"></div>
+          <h2 style="margin-top:0;">Library</h2>
+          <div id="library-root"></div>
         </div>
       </section>
 
       <section id="panel-compose" class="room-panel" hidden>
         <div class="card">
           <h2 style="margin-top:0;">Compose together</h2>
-          <p class="muted">Pick a duration, then click a position on the staff to place or remove a note. Everyone here sees the same staff, live.</p>
+          <p class="muted">Pick a duration, then click a position on a staff to place or remove a note. Add a voice for each line you want — they share one tempo and play together. Everyone here sees the same staves, live.</p>
           <div id="composition-root"></div>
         </div>
       </section>

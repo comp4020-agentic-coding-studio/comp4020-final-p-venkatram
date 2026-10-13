@@ -19,6 +19,7 @@ import { jsPDF } from "jspdf";
 import "svg2pdf.js";
 import { type Cell, GRID_STEPS } from "../../shared/grid";
 import { diatonicIndexToY, pitchToStaffNote } from "./staff-notation";
+import { savePdfToLibrary } from "./library-save";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const STEP_WIDTH = 68;
@@ -168,7 +169,7 @@ function slugify(name: string): string {
   return slug.length > 0 ? slug : "composition";
 }
 
-export async function exportCompositionPdf(roomName: string, cells: Cell[], bpm: number): Promise<void> {
+export async function exportCompositionPdf(roomId: string, roomName: string, cells: Cell[], bpm: number): Promise<void> {
   const svg = buildExportSvg(roomName, cells, bpm);
   const width = Number(svg.getAttribute("width"));
   const height = Number(svg.getAttribute("height"));
@@ -183,7 +184,9 @@ export async function exportCompositionPdf(roomName: string, cells: Cell[], bpm:
   try {
     const pdf = new jsPDF(width > height ? "l" : "p", "pt", [width, height]);
     await pdf.svg(svg, { x: 0, y: 0, width, height });
-    pdf.save(`waveforge-${slugify(roomName)}.pdf`);
+    const filename = `waveforge-${slugify(roomName)}.pdf`;
+    pdf.save(filename);
+    savePdfToLibrary(roomId, filename, pdf);
   } finally {
     svg.remove();
   }
