@@ -1,16 +1,9 @@
 ---
 // Ambient background for pre-app pages (login, signup, rooms list) — just the
-// photo and the sound-wave strip, not index.astro's headline/carousel/CTA,
-// which is homepage-specific marketing copy. Keeps the same "you're not in
-// the app yet" visual identity alive on every page before a room is entered.
+// photo, not index.astro's headline/carousel/CTA (homepage-specific
+// marketing copy) or its sound-wave strip (landing-page-only decoration).
 import { Image } from "astro:assets";
 import heroImage from "../assets/sheet-music.jpg";
-
-const waveBars = Array.from({ length: 56 }, () => ({
-  duration: (0.6 + Math.random() * 0.9).toFixed(2),
-  delay: (Math.random() * -1.5).toFixed(2),
-  peak: Math.round(25 + Math.random() * 65),
-}));
 ---
 
 <div class="page-backdrop" aria-hidden="true">
@@ -22,11 +15,4 @@ const waveBars = Array.from({ length: 56 }, () => ({
     sizes="100vw"
     loading="eager"
   />
-</div>
-<div class="sound-wave" aria-hidden="true">
-  {
-    waveBars.map((bar) => (
-      <span class="sound-wave-bar" style={`--duration:${bar.duration}s; --delay:${bar.delay}s; --peak:${bar.peak}%;`} />
-    ))
-  }
 </div>

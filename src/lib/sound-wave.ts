@@ -1,7 +1,6 @@
-// Shared by index.astro and Backdrop.astro so the sound-wave bar strip looks
-// and computes identically wherever it appears. Build-time only (both
-// callers are Astro frontmatter) — there's no runtime cost to this, and no
-// client JS needed just to draw it.
+// Used by index.astro to compute the landing page's sound-wave bar strip.
+// Build-time only (called from Astro frontmatter) — there's no runtime cost
+// to this, and no client JS needed just to draw it.
 export interface WaveBar {
   duration: string;
   delay: string;

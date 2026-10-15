@@ -3,6 +3,7 @@ import { requireSession } from "./session";
 interface Room {
   id: string;
   name: string;
+  createdAt: number;
 }
 
 // The create-room dialog opens centered, by itself, when there are no rooms
@@ -18,6 +19,7 @@ async function loadRooms(): Promise<void> {
   const data = (await res.json()) as { rooms: Room[] };
   list.textContent = "";
   if (data.rooms.length === 0) {
+    list.className = "";
     const empty = document.createElement("p");
     empty.className = "muted";
     empty.textContent = "No rooms yet — create one below.";
@@ -26,15 +28,21 @@ async function loadRooms(): Promise<void> {
     if (dialog instanceof HTMLDialogElement && !dialog.open) dialog.showModal();
     return;
   }
+  list.className = "room-grid";
   for (const room of data.rooms) {
     const link = document.createElement("a");
-    link.className = "card";
-    link.style.display = "block";
-    link.style.marginBottom = "0.75rem";
-    link.style.textDecoration = "none";
-    link.style.color = "var(--text)";
+    link.className = "card room-card";
     link.href = `/room/?id=${encodeURIComponent(room.id)}`;
-    link.textContent = room.name;
+
+    const name = document.createElement("p");
+    name.className = "room-card-name";
+    name.textContent = room.name;
+
+    const meta = document.createElement("p");
+    meta.className = "room-card-meta";
+    meta.textContent = `Created ${new Date(room.createdAt).toLocaleDateString()}`;
+
+    link.append(name, meta);
     list.append(link);
   }
   trigger?.removeAttribute("hidden");

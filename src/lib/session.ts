@@ -22,36 +22,35 @@ export async function logout(): Promise<void> {
 }
 
 // Renders "Log in / Sign up" or "<name> · Log out" into the header's
-// #auth-nav slot, present on every page via Layout.astro. Also the one place
-// that decides whether the hamburger menu is even reachable — it starts
-// `hidden` in Layout.astro's markup, and only this reveals it, for a
-// signed-in visitor. /activity/ stays reachable by direct link either way;
-// it just isn't offered in the menu to someone not signed in.
+// #auth-nav slot, present on every page via Layout.astro. The hamburger menu
+// itself is always reachable (Layout.astro) regardless of session state —
+// without the menu, a logged-out visitor on a bare page like /activity/ has
+// no way to navigate anywhere at all.
 export async function renderAuthNav(): Promise<SessionUser | null> {
   const nav = document.getElementById("auth-nav");
-  const navToggle = document.getElementById("site-nav-toggle");
   const user = await fetchSession();
-  navToggle?.toggleAttribute("hidden", !user);
   if (!nav) return user;
   nav.textContent = "";
   if (user) {
-    const name = document.createElement("span");
-    name.className = "muted";
+    const name = document.createElement("p");
+    name.className = "site-nav-heading";
     name.textContent = user.displayName;
     const logoutBtn = document.createElement("button");
     logoutBtn.type = "button";
-    logoutBtn.className = "btn secondary";
+    logoutBtn.className = "site-nav-item";
     logoutBtn.textContent = "Log out";
     logoutBtn.addEventListener("click", async () => {
       await logout();
       window.location.href = "/";
     });
-    nav.append(name, " ", logoutBtn);
+    nav.append(name, logoutBtn);
   } else {
     const login = document.createElement("a");
+    login.className = "site-nav-item";
     login.href = "/login/";
     login.textContent = "Log in";
     const signup = document.createElement("a");
+    signup.className = "site-nav-item";
     signup.href = "/signup/";
     signup.textContent = "Sign up";
     nav.append(login, signup);

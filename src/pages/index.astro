@@ -61,24 +61,8 @@ const waveBars = generateWaveBars(180);
     </div>
   </section>
 
-  <section class="stats-strip" id="stats-strip" aria-label="Your WaveForge activity" hidden>
-    <div class="stat">
-      <span class="stat-number" id="stat-rooms">0</span>
-      <span class="stat-label">rooms created</span>
-    </div>
-    <div class="stat">
-      <span class="stat-number" id="stat-notes">0</span>
-      <span class="stat-label">notes composed</span>
-    </div>
-    <div class="stat">
-      <span class="stat-number" id="stat-lyrics">0</span>
-      <span class="stat-label">lyric sheets shared</span>
-    </div>
-  </section>
   <script>
-    import { initLandingStats } from "../lib/landing-stats";
     import { initHeroCarousel } from "../lib/hero-carousel";
-    initLandingStats();
     initHeroCarousel();
   </script>
 
