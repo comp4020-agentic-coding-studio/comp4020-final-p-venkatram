@@ -14,7 +14,10 @@ import Layout from "../../layouts/Layout.astro";
   <div id="consent-root"></div>
 
   <div id="room-root" hidden>
-    <h1 id="room-name"></h1>
+    <div class="room-header-row">
+      <h1 id="room-name"></h1>
+      <div id="recording-controls-root" class="room-record-controls"></div>
+    </div>
 
     <div id="lobby-admin-root"></div>
 
@@ -24,35 +27,26 @@ import Layout from "../../layouts/Layout.astro";
           <p>Share this page's link to invite someone else in. Switch views from the menu (top left).</p>
           <button type="button" id="copy-room-link" class="btn secondary">Copy Link</button>
         </div>
-        <div class="collab-layout">
-          <div class="collab-main">
-            <div id="video-grid" class="video-grid"></div>
-            <div id="media-controls-root"></div>
+        <div class="banner" id="presence-banner">
+          <p><strong>Here now:</strong> <span id="presence-list"></span></p>
+        </div>
+        <div id="video-grid-wrap" class="video-grid-wrap">
+          <div id="video-grid" class="video-grid"></div>
+        </div>
+        <button type="button" id="video-grid-toggle" class="video-grid-toggle-btn" hidden></button>
 
-            <label class="field" style="flex-direction:row; align-items:center; gap:0.5rem;">
-              <input type="checkbox" id="original-sound-toggle" />
-              <span
-                >Original Sound (no echo cancellation, noise suppression, or auto-gain — for singing together, not
-                talking)</span
-              >
-            </label>
-
-            <section class="card" style="max-width:24rem;">
-              <h2 style="margin-top:0;">Here now</h2>
-              <ul id="presence-list" style="list-style:none; padding:0; margin:0;"></ul>
-            </section>
-
-            <section class="card" style="max-width:24rem;">
-              <h2 style="margin-top:0;">Recording</h2>
-              <div id="recording-controls-root"></div>
-            </section>
-          </div>
-
-          <div class="collab-side card">
-            <h2 style="margin-top:0;">Lyrics</h2>
-            <p class="muted">Select text in the lyrics to comment on it, like Google Docs.</p>
-            <div id="lyrics-root"></div>
-          </div>
+        <!-- Pinned to the bottom of the viewport rather than sitting in the
+             panel's normal flow — stays reachable without scrolling, and
+             (being a descendant of this panel) hides along with everything
+             else here when another room view is switched to. -->
+        <div class="room-bottom-bar">
+          <label class="field" style="flex-direction:row; align-items:center; gap:0.5rem; margin:0;">
+            <input type="checkbox" id="original-sound-toggle" />
+            <span
+              >Original Sound (no echo cancellation, noise suppression, or auto-gain — for singing together, not
+              talking)</span
+            >
+          </label>
         </div>
       </section>
 
@@ -66,7 +60,9 @@ import Layout from "../../layouts/Layout.astro";
       <section id="panel-compose" class="room-panel" hidden>
         <div class="card">
           <h2 style="margin-top:0;">Compose together</h2>
-          <p class="muted">Pick a duration, then click a position on a staff to place or remove a note. Add a voice for each line you want — they share one tempo and play together. Everyone here sees the same staves, live.</p>
+          <div class="banner">
+            <p>Pick a duration, then click a position on a staff to place or remove a note. Add a voice for each line you want — they share one tempo and play together. Everyone here sees the same staves, live.</p>
+          </div>
           <div id="composition-root"></div>
         </div>
       </section>
@@ -78,6 +74,27 @@ import Layout from "../../layouts/Layout.astro";
           <div id="karaoke-root"></div>
         </div>
       </section>
+    </div>
+
+    <!-- Floating chat widget, fixed to the viewport corner over every room
+         panel (not just Collaboration) — collapsed to a launcher bubble by
+         default, expanding into the full lyrics panel on click. -->
+    <div id="lyrics-widget" class="lyrics-widget">
+      <button type="button" id="lyrics-widget-toggle" class="lyrics-widget-launcher" aria-expanded="false" aria-label="Open lyrics">
+        <svg class="lyrics-widget-icon" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+          <line x1="2" y1="6" x2="24" y2="6" stroke="currentColor" stroke-width="1.4" />
+          <line x1="2" y1="10" x2="24" y2="10" stroke="currentColor" stroke-width="1.4" />
+          <line x1="2" y1="14" x2="24" y2="14" stroke="currentColor" stroke-width="1.4" />
+          <line x1="2" y1="18" x2="24" y2="18" stroke="currentColor" stroke-width="1.4" />
+          <line x1="2" y1="22" x2="24" y2="22" stroke="currentColor" stroke-width="1.4" />
+          <ellipse cx="10" cy="18" rx="3" ry="2.3" transform="rotate(-18 10 18)" fill="currentColor" />
+          <line x1="12.8" y1="16.6" x2="12.8" y2="4" stroke="currentColor" stroke-width="1.4" />
+          <ellipse cx="19" cy="10" rx="3" ry="2.3" transform="rotate(-18 19 10)" fill="currentColor" />
+          <line x1="21.8" y1="8.6" x2="21.8" y2="2" stroke="currentColor" stroke-width="1.4" />
+        </svg>
+        <span id="lyrics-widget-badge" class="lyrics-widget-badge" hidden></span>
+      </button>
+      <div id="lyrics-root" class="lyrics-widget-panel" hidden></div>
     </div>
   </div>
   <script>

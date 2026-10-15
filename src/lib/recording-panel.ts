@@ -27,24 +27,23 @@ function saveRecordingToLibrary(roomId: string, title: string): void {
   });
 }
 
+// The explanatory text that used to sit permanently beside the buttons is
+// now each button's native `title` — a browser tooltip on hover, so the
+// header row stays compact.
+const PERSONAL_RECORD_HELP =
+  "Records your own camera/mic locally and downloads straight to this device. Uploading to Google Drive or OneDrive is a stretch goal — not built yet.";
+const GROUP_RECORD_HELP =
+  "Mixes your mic with everyone currently connected and downloads the audio straight to this device. Uploading to Google Drive or OneDrive is a stretch goal — not built yet.";
+
 export function initRecordingPanel(container: HTMLElement, opts: RecordingPanelOptions): void {
   container.innerHTML = "";
-
-  const note = document.createElement("p");
-  note.className = "muted";
-  note.textContent =
-    "Recordings download straight to this device, and a reference to them appears in the room's Library. Uploading to Google Drive or OneDrive is a stretch goal — not built yet; paste a link in from the Library panel after you upload it yourself.";
-
-  const row = document.createElement("div");
-  row.style.display = "flex";
-  row.style.gap = "0.75rem";
-  row.style.flexWrap = "wrap";
 
   const personalRecorder = new StreamRecorder();
   const personalBtn = document.createElement("button");
   personalBtn.type = "button";
   personalBtn.className = "btn secondary";
   personalBtn.textContent = "Record myself";
+  personalBtn.title = PERSONAL_RECORD_HELP;
 
   personalBtn.addEventListener("click", () => {
     if (personalRecorder.isRecording) {
@@ -59,7 +58,7 @@ export function initRecordingPanel(container: HTMLElement, opts: RecordingPanelO
     }
     const stream = opts.getLocalStream();
     if (!stream) {
-      note.textContent = "No camera or mic to record — you joined this room without one.";
+      personalBtn.title = "No camera or mic to record — you joined this room without one.";
       return;
     }
     personalRecorder.start(stream);
@@ -71,6 +70,7 @@ export function initRecordingPanel(container: HTMLElement, opts: RecordingPanelO
   groupBtn.type = "button";
   groupBtn.className = "btn secondary";
   groupBtn.textContent = "Record the group";
+  groupBtn.title = GROUP_RECORD_HELP;
 
   groupBtn.addEventListener("click", () => {
     if (groupRecorder.isRecording) {
@@ -86,13 +86,12 @@ export function initRecordingPanel(container: HTMLElement, opts: RecordingPanelO
     const local = opts.getLocalStream();
     const sources = [local, ...opts.getRemoteStreams()].filter((s): s is MediaStream => Boolean(s));
     if (sources.length === 0) {
-      note.textContent = "Nobody's audio is available to record yet.";
+      groupBtn.title = "Nobody's audio is available to record yet.";
       return;
     }
     groupRecorder.start(mixAudioForGroupRecording(sources));
     groupBtn.textContent = "Stop recording the group";
   });
 
-  row.append(personalBtn, groupBtn);
-  container.append(note, row);
+  container.append(personalBtn, groupBtn);
 }

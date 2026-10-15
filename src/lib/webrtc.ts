@@ -95,6 +95,35 @@ export class RoomMedia {
     });
   }
 
+  // Screen share swaps the outgoing video track on every existing peer
+  // connection. For someone who joined with their camera on, the video
+  // transceiver is already sendrecv/sendonly, so replaceTrack alone is
+  // enough — no renegotiation, the same way Original Sound re-applies
+  // constraints in place. But for someone who joined mic-only or with no
+  // media at all, that transceiver is recvonly (getOrCreatePeer's fallback
+  // for anyone with nothing local to send) — WebRTC never transmits on a
+  // recvonly transceiver regardless of what's attached to its sender, so
+  // sharing a screen from that starting point needs the direction flipped
+  // to sendrecv and a fresh offer/answer round trip, same shape as the
+  // initial connection.
+  async replaceVideoTrack(track: MediaStreamTrack | null): Promise<void> {
+    for (const [userId, pc] of this.peers) {
+      const transceiver = pc.getTransceivers().find((t) => t.sender.track?.kind === "video" || t.receiver.track?.kind === "video");
+      if (!transceiver) continue;
+      await transceiver.sender.replaceTrack(track);
+      if (track && transceiver.direction === "recvonly") {
+        transceiver.direction = "sendrecv";
+        await this.renegotiate(userId, pc);
+      }
+    }
+  }
+
+  private async renegotiate(userId: string, pc: RTCPeerConnection): Promise<void> {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    this.conn.send({ type: "webrtc.offer", to: userId, sdp: offer });
+  }
+
   closeAll(): void {
     for (const pc of this.peers.values()) pc.close();
     this.peers.clear();
