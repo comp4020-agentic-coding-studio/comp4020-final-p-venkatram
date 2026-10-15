@@ -14,55 +14,74 @@ export interface LyricsController {
   applyCommentAdd: (comment: LyricsComment) => void;
 }
 
-export function initLyrics(container: HTMLElement, roomId: string, roomName: string, conn: SignalSender): LyricsController {
+export function initLyrics(
+  container: HTMLElement,
+  roomId: string,
+  roomName: string,
+  conn: SignalSender,
+  onClose: () => void,
+): LyricsController {
   let title: string | null = null;
   let lines: LyricLine[] = [];
 
+  // The container (#lyrics-root) already carries .lyrics-widget-panel and
+  // `hidden` from the Astro markup — room-page.ts's widget toggle owns that
+  // visibility, so this only clears and rebuilds the panel's own content.
   container.innerHTML = "";
 
-  const uploadForm = document.createElement("form");
-  uploadForm.innerHTML = `
-    <div class="field">
-      <label for="lyrics-title">Title</label>
-      <input id="lyrics-title" name="title" type="text" maxlength="120" />
-    </div>
-    <div class="field">
-      <label for="lyrics-raw">Lyrics (LRC "[mm:ss.xx]text" per line for timed reference, or just paste plain lines)</label>
-      <textarea id="lyrics-raw" name="raw" rows="6"></textarea>
-    </div>
-  `;
-  const uploadBtn = document.createElement("button");
-  uploadBtn.type = "submit";
-  uploadBtn.className = "btn secondary";
-  uploadBtn.textContent = "Upload lyrics";
-  uploadForm.append(uploadBtn);
-
-  const titleInput = uploadForm.elements.namedItem("title") as HTMLInputElement;
-  const rawInput = uploadForm.elements.namedItem("raw") as HTMLTextAreaElement;
+  // Chat-style layout: a header bar (title + export + close), a scrolling
+  // message area for the lines themselves, a comment thread underneath, and
+  // the upload form reworked as a composer pinned to the bottom — the same
+  // shape as any chat app's expanded window, just with "send" replaced by
+  // "upload lyrics".
+  const header = document.createElement("div");
+  header.className = "lyrics-chat-header";
 
   const titleEl = document.createElement("h3");
-  titleEl.style.marginBottom = "0.25rem";
+  titleEl.className = "lyrics-chat-title";
 
-  const exportRow = document.createElement("div");
-  exportRow.style.display = "flex";
-  exportRow.style.alignItems = "center";
-  exportRow.style.gap = "0.5rem";
-  exportRow.style.margin = "0.5rem 0";
   const exportBtn = document.createElement("button");
   exportBtn.type = "button";
   exportBtn.className = "btn secondary";
   exportBtn.textContent = "Export PDF";
-  const exportError = document.createElement("span");
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "lyrics-widget-close";
+  closeBtn.setAttribute("aria-label", "Close lyrics");
+  closeBtn.innerHTML = "&times;";
+  closeBtn.addEventListener("click", onClose);
+
+  header.append(titleEl, exportBtn, closeBtn);
+
+  const exportError = document.createElement("p");
   exportError.className = "error-text";
-  exportRow.append(exportBtn, exportError);
 
   const linesEl = document.createElement("div");
-  linesEl.className = "lyrics-lines";
+  linesEl.className = "lyrics-chat-messages";
 
   const commentsPanel = document.createElement("aside");
   commentsPanel.className = "lyrics-comments-panel";
 
-  container.append(uploadForm, titleEl, exportRow, linesEl, commentsPanel);
+  const uploadForm = document.createElement("form");
+  uploadForm.className = "lyrics-chat-composer";
+  uploadForm.innerHTML = `
+    <input id="lyrics-title" name="title" type="text" maxlength="120" placeholder="Title (optional)" />
+    <div class="lyrics-chat-composer-row">
+      <textarea
+        id="lyrics-raw"
+        name="raw"
+        rows="6"
+        placeholder='Paste lyrics — "[mm:ss.xx]text" per line for timed reference, or just plain lines'
+      ></textarea>
+      <button type="submit" class="btn">Upload</button>
+    </div>
+  `;
+
+  const titleInput = uploadForm.elements.namedItem("title") as HTMLInputElement;
+  const rawInput = uploadForm.elements.namedItem("raw") as HTMLTextAreaElement;
+
+  container.append(header, exportError, linesEl, commentsPanel, uploadForm);
 
   const comments: LyricsCommentsApi = initLyricsComments({
     linesContainer: linesEl,
@@ -111,12 +130,13 @@ export function initLyrics(container: HTMLElement, roomId: string, roomName: str
   function renderLines(): void {
     linesEl.innerHTML = "";
     lines.forEach((line, index) => {
-      const p = document.createElement("p");
-      p.className = "lyrics-line";
-      p.dataset.index = String(index);
-      comments.renderLineContent(p, index, line.text);
-      linesEl.append(p);
+      const bubble = document.createElement("p");
+      bubble.className = "lyrics-line lyrics-chat-bubble";
+      bubble.dataset.index = String(index);
+      comments.renderLineContent(bubble, index, line.text);
+      linesEl.append(bubble);
     });
+    linesEl.scrollTop = linesEl.scrollHeight;
   }
 
   return {
