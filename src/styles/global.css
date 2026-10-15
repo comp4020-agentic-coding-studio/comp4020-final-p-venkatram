@@ -70,6 +70,20 @@ img {
   max-width: 100%;
 }
 
+/* The `hidden` attribute means "must not render" — but its UA-default rule
+   (`[hidden] { display: none }`) has only attribute-selector specificity
+   (0,1,0), so any single-class rule declared later in the cascade
+   (`.btn { display: inline-flex }`, `.hamburger-btn { display: inline-flex }`,
+   etc.) ties and wins by source order, silently un-hiding the element. This
+   bug recurred four separate times across this app (hamburger, the lyrics
+   widget panel, the video-grid toggle, and here) before being fixed with one
+   rule instead of a new override per class. !important is deliberate: hidden
+   must always win, full stop, regardless of what display rule comes after it
+   in the file. */
+[hidden] {
+  display: none !important;
+}
+
 a {
   color: var(--accent-2);
 }
@@ -261,13 +275,6 @@ a {
   text-align: center;
 }
 
-/* Real counts (server/routes/stats.ts), not the "10K+" placeholder kind —
-   the layout pattern (three metrics in a row) is borrowed, the numbers
-   underneath it aren't. Shown only to signed-in visitors
-   (src/lib/landing-stats.ts) — the explicit [hidden] rule matters here since
-   a plain class selector of equal specificity would otherwise beat the
-   browser's default `[hidden] { display: none }` and the attribute alone
-   wouldn't actually hide anything. */
 /* The same ambient photo + wave animation as the homepage hero, but just the
    backdrop — no headline/carousel/CTA, which are index.astro's own marketing
    copy. Fixed behind everything (z-index: -1, so it paints below ordinary,
@@ -292,19 +299,6 @@ a {
 [data-theme="light"] .page-backdrop-image,
 :root:not([data-theme="dark"]) .page-backdrop-image {
   opacity: 0.14;
-}
-
-.stats-strip {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  text-align: center;
-  margin-top: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.stats-strip[hidden] {
-  display: none;
 }
 
 /* Purely decorative, sized to the same 1-inch strip the hero's own height
@@ -410,33 +404,6 @@ dialog::backdrop {
   padding: 0;
 }
 
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 1.25rem 0.5rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-}
-
-.stat-number {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--accent);
-}
-
-.stat-label {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-@media (max-width: 480px) {
-  .stats-strip {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 480px) {
   /* On a short landscape phone, 100vh - 6rem - 1in can get very small — the
      min-height floor on .hero already covers that, this is just the text
@@ -462,6 +429,8 @@ dialog::backdrop {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
   font-weight: 800;
   font-size: 1.15rem;
   letter-spacing: 0.01em;
@@ -543,8 +512,8 @@ dialog::backdrop {
   padding: calc(1.25rem + env(safe-area-inset-top, 0px)) 1.25rem 1.25rem;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 1.1rem;
+  align-items: stretch;
+  gap: 0.6rem;
   transform: translateX(-100%);
   transition: transform 0.2s ease;
   pointer-events: none;
@@ -556,14 +525,35 @@ dialog::backdrop {
   pointer-events: auto;
 }
 
-.site-nav a {
-  color: var(--text-muted);
+/* Shared with .room-nav-btn's look (border, background, left-aligned,
+   stretched to the panel's width) so every entry in the menu — Rooms,
+   Activity, auth links, the theme toggle, and the room panel switches —
+   reads as one consistent set of nav buttons rather than two different
+   styles stacked in the same panel. */
+/* `#site-nav .site-nav-item` (not plain `.site-nav-item`) to out-specificity
+   the theme's own `:root:not([data-theme="dark"]) a` rule (0,2,1) — a bare
+   class or `a.site-nav-item` (0,1,1 / 0,2,0) still loses to it, which
+   otherwise keeps every nav link in the generic link color instead of
+   matching the room-nav-btn look next to it. */
+.site-nav-item,
+#site-nav .site-nav-item {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.95rem;
   text-decoration: none;
-  font-size: 1rem;
 }
 
-.site-nav a:hover {
-  color: var(--text);
+.site-nav-item:hover {
+  border-color: var(--accent);
 }
 
 .site-nav-close {
@@ -581,21 +571,11 @@ dialog::backdrop {
 #auth-nav {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0.6rem;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: 100%;
 }
 
-.theme-toggle {
-  border: 1px solid var(--border);
-  background: var(--surface-raised);
-  color: var(--text);
-  border-radius: 999px;
-  padding: 0.4rem 0.9rem;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.theme-toggle:focus-visible,
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
@@ -686,18 +666,23 @@ select {
 }
 
 /* An instructional notice, set apart from ordinary body text rather than
-   just another muted paragraph easy to skim past. */
+   just another muted paragraph easy to skim past. A fixed min-height keeps
+   every banner the same size regardless of whether its content includes a
+   button (Copy Link) or just a line of text (the presence banner) — without
+   it, the plain-text one reads noticeably shorter stacked beside the other. */
 .banner {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.6rem;
+  min-height: 4rem;
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-left: 4px solid var(--accent-2);
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
   margin: 0.75rem 0 1.25rem;
+  box-sizing: border-box;
 }
 
 .banner p {
@@ -724,11 +709,59 @@ select {
   padding: 2rem 1.25rem 4rem;
 }
 
+/* Caps the grid's height so a large room doesn't push everything below it
+   (the lyrics widget, the bottom bar) off-screen. When it overflows, a fade
+   plus the toggle button beneath it (room-page.ts) signal there's more —
+   "..." in spirit, a visual ellipsis rather than literal dots, since the cut
+   is mid-tile, not mid-text. Expanding removes the cap entirely so every
+   attendee's tile is visible, full page scroll taking over from there. */
+.video-grid-wrap {
+  position: relative;
+  max-height: 24rem;
+  overflow: hidden;
+}
+
+.video-grid-wrap.is-expanded {
+  max-height: none;
+}
+
+.video-grid-wrap.is-overflowing::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3rem;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+  pointer-events: none;
+}
+
+.video-grid-toggle-btn {
+  display: block;
+  width: 100%;
+  margin: -0.25rem 0 1rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
 .video-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
   gap: 0.75rem;
   margin: 1rem 0 1.5rem;
+}
+
+/* The grid item — holds the tile itself plus its status row underneath, so
+   the two move and size together as one unit within the grid. */
+.video-tile-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 .video-tile {
@@ -780,6 +813,83 @@ select {
   background: rgba(0, 0, 0, 0.75);
 }
 
+/* Below the tile, not overlaid on it — capped to the tile's own width
+   (flex-wrap, not a fixed pixel size) so three icons never overflow even on
+   the narrowest tile the grid packs in (.video-grid's own minmax(12rem, 1fr)
+   floor). */
+.video-tile-status {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+/* Shared by both the plain (span, a remote peer's read-only status) and
+   interactive (button, the self tile's mic/camera/share toggles) variant —
+   reset to look identical regardless of which element it actually is. Sits
+   on the page's own surface now (not over video), so it takes the ordinary
+   surface-raised/border treatment instead of the dark semi-transparent
+   overlay style the in-tile version needed for contrast against video. */
+.video-tile-status-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+}
+
+.video-tile-status-icon-glyph {
+  width: 100%;
+  height: 100%;
+}
+
+button.video-tile-status-icon {
+  cursor: pointer;
+}
+
+button.video-tile-status-icon:hover {
+  border-color: var(--accent);
+}
+
+/* An "off" icon (muted mic, camera off) reads as a state worth noticing —
+   tinted so it doesn't look identical to the "on" icons beside it. */
+button.video-tile-status-icon[aria-pressed="true"] {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+/* Replaces the <video> element when the camera is off — a static frame
+   instead of a frozen/black video, so "no camera" reads as a deliberate
+   state rather than something broken. */
+.video-tile-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-raised);
+}
+
+.video-tile-placeholder-initial {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
 .video-tile:fullscreen {
   aspect-ratio: unset;
   display: flex;
@@ -791,13 +901,6 @@ select {
   width: auto;
   height: 100%;
   max-width: 100%;
-}
-
-.media-controls {
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  margin: 0 0 1rem;
 }
 
 /* A standard 16:9 responsive embed box — YouTube's iframe fills it exactly,
@@ -833,14 +936,35 @@ select {
 .composition-toolbar {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.25rem;
   flex-wrap: wrap;
   margin-bottom: 0.75rem;
 }
 
+.composition-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  /* Separates the tempo group from Play before it and the duration picker
+     after it, so the toolbar reads as distinct clusters of controls rather
+     than one flat row. */
+  padding-left: 1.25rem;
+  border-left: 1px solid var(--border);
+}
+
 .duration-picker {
   display: flex;
+  align-items: center;
   gap: 0.25rem;
+  padding-left: 1.25rem;
+  border-left: 1px solid var(--border);
+}
+
+/* Export PDF is a one-off action, not part of the play/tempo/duration set
+   that drives composing — pushed to the toolbar's far right rather than
+   sitting flush against the duration picker. */
+.composition-toolbar > .btn.secondary {
+  margin-left: auto;
 }
 
 .duration-btn {
@@ -864,6 +988,11 @@ select {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.composition-add-voice {
+  margin-top: 0.25rem;
 }
 
 .composition-voice {
@@ -891,20 +1020,39 @@ select {
   width: 10rem;
 }
 
-.composition-voice-remove {
+.composition-voice-instrument {
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.composition-voice-add-bar {
   margin-left: auto;
 }
 
 .staff-scroll {
-  overflow-x: auto;
   padding: 0.5rem 0 1rem;
+  /* Stacks each bar's own staff-svg as a vertical column rather than side by
+     side — a voice with more than one bar reads as turning the page to a
+     new line of music, not a single wider staff. */
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .staff-svg {
   display: block;
-  /* Sized by its own width/height attributes (composition-staff.ts), 1
-     SVG unit = 1px, so a click target's real size on screen is exactly
-     what its geometry says — no CSS scale factor to shrink it further. */
+  /* The SVG's own width/height attributes set its drawing coordinate space
+     (in sync with VIEW_WIDTH/VIEW_HEIGHT, composition-staff.ts); these two
+     rules then scale it down to fit the voice card's actual width instead of
+     overflowing it into a horizontal scrollbar — the viewBox keeps every
+     click target's coordinate mapping correct at any rendered size. */
+  width: 100%;
+  height: auto;
 }
 
 .staff-line {
@@ -965,15 +1113,143 @@ select {
   opacity: 0.15;
 }
 
-.lyrics-lines {
-  max-height: 16rem;
-  overflow-y: auto;
-  padding: 0.5rem 0;
+/* The lyrics panel behaves like a floating chat widget (Intercom/Messenger
+   style): fixed to the bottom-right of the viewport, over every room panel
+   (not just Collaboration), collapsed to a round launcher bubble by default
+   and expanding into the full panel on click. */
+.lyrics-widget {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 70;
 }
 
-.lyrics-line {
-  margin: 0.4rem 0;
+.lyrics-widget-launcher {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Hidden once the panel is open — the panel's own header provides the close
+   affordance, so there's no launcher bubble floating behind it. */
+.lyrics-widget.is-open .lyrics-widget-launcher {
+  display: none;
+}
+
+.lyrics-widget-badge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The expanding panel itself — fixed size, anchored above the launcher's
+   spot rather than growing from it, so it reads as a chat window rather
+   than an inline page section. */
+.lyrics-widget-panel {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  width: min(24rem, calc(100vw - 2.5rem));
+  height: min(32rem, calc(100vh - 6rem));
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.lyrics-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-raised);
+}
+
+.lyrics-chat-title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lyrics-widget-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
   color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.lyrics-chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.75rem 1rem;
+}
+
+.lyrics-chat-bubble {
+  display: block;
+  width: fit-content;
+  max-width: 90%;
+  margin: 0 0 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.9rem;
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.lyrics-chat-composer {
+  border-top: 1px solid var(--border);
+  padding: 0.6rem 0.75rem;
+  background: var(--surface-raised);
+}
+
+.lyrics-chat-composer input {
+  width: 100%;
+  margin-bottom: 0.4rem;
+}
+
+.lyrics-chat-composer-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.lyrics-chat-composer-row textarea {
+  flex: 1;
+  resize: vertical;
 }
 
 .lyrics-comment-mark {
@@ -1004,15 +1280,14 @@ select {
 }
 
 .lyrics-comments-panel {
-  margin-top: 0.75rem;
   border-top: 1px solid var(--border);
-  padding-top: 0.5rem;
+  padding: 0.6rem 1rem;
   max-height: 12rem;
   overflow-y: auto;
 }
 
 .lyrics-comment-row {
-  padding: 0.4rem 0;
+  padding: 0.5rem 0;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   font-size: 0.9rem;
@@ -1046,25 +1321,47 @@ select {
   margin-bottom: 0;
 }
 
-.room-panel[hidden] {
-  display: none;
+
+/* The room name and the two record buttons share one row, buttons pushed to
+   the far right — keeps them reachable without scrolling into the
+   Collaboration panel, and visible regardless of which room view is open. */
+.room-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
-/* Video/presence and lyrics now split the full page width evenly — there's
-   no more room-local sidebar eating into it, since the room's three views
-   are switched from the site-wide hamburger menu instead (.room-nav-btn
-   below lives there, not on this page). */
-.collab-layout {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  align-items: start;
+.room-record-controls {
+  display: flex;
+  gap: 0.6rem;
+  flex-shrink: 0;
 }
 
-@media (max-width: 860px) {
-  .collab-layout {
-    grid-template-columns: 1fr;
-  }
+/* Pins Original Sound to the bottom of the viewport rather than wherever it
+   falls in the panel's normal flow — reachable without scrolling, the same
+   way the record buttons and the lyrics widget stay reachable regardless of
+   scroll position. Sits above the lyrics widget's own z-index so the two
+   never fight for the same space (the widget is bottom-right, this spans
+   the rest of the width), and gets out of the floating widget's corner via
+   its own right padding. */
+.room-bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  padding: 0.75rem 7rem 0.75rem 1.25rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Room content needs room to scroll above the fixed bottom bar instead of
+   the bar covering its last few lines. */
+#panel-collab {
+  padding-bottom: 4.5rem;
 }
 
 /* --- Room panel switches, inside the site-nav (Layout.astro) --- */
@@ -1092,22 +1389,48 @@ select {
   margin: 0.4rem 0 0;
 }
 
+/* .room-nav-btn gets .site-nav-item's look (border/background/sizing) from
+   the markup applying both classes; this rule only adds the width this
+   particular button needs beyond that shared base. */
 .room-nav-btn {
-  text-align: left;
-  padding: 0.5rem 0.7rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--border);
-  background: var(--surface-raised);
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.95rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .room-nav-btn[aria-selected="true"] {
   background: var(--accent);
   color: var(--accent-contrast);
   border-color: var(--accent);
+}
+
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.room-card {
+  display: block;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s;
+}
+
+.room-card:hover {
+  border-color: var(--accent);
+}
+
+.room-card-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin: 0 0 0.4rem;
+}
+
+.room-card-meta {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0;
 }
 
 @media (max-width: 480px) {
