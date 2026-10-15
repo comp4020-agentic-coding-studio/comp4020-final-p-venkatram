@@ -11,7 +11,16 @@ import { WebSocketServer, type WebSocket } from "ws";
 import { getDb } from "./db.ts";
 import { sessionTokenFromRequest, userForToken } from "./auth.ts";
 import { getRoom, joinRoom } from "./rooms.ts";
-import { addVoice, getComposition, removeVoice, renameVoice, setTempo, toggleCell } from "./compositions.ts";
+import {
+  addBar,
+  addVoice,
+  getComposition,
+  removeVoice,
+  renameVoice,
+  setTempo,
+  setVoiceInstrument,
+  toggleCell,
+} from "./compositions.ts";
 import { getLyrics } from "./lyrics.ts";
 import { addComment, listComments } from "./lyrics-comments.ts";
 import { consumeAdmitted, listPending, resolvePending } from "./realtime/lobby.ts";
@@ -166,6 +175,24 @@ function handleMessage(db: DatabaseSync, roomId: string, sender: Connection, mes
     return;
   }
 
+  if (record.type === "composition.add-bar") {
+    const next = addBar(db, roomId, String(record.voiceId ?? ""));
+    if (next) {
+      broadcast(roomId, { type: "composition.update", ...next });
+      logEvent("composition.add-bar", { roomId, userId: sender.userId, voiceId: record.voiceId });
+    }
+    return;
+  }
+
+  if (record.type === "composition.set-instrument") {
+    const next = setVoiceInstrument(db, roomId, String(record.voiceId ?? ""), String(record.instrument ?? ""));
+    if (next) {
+      broadcast(roomId, { type: "composition.update", ...next });
+      logEvent("composition.set-instrument", { roomId, userId: sender.userId, voiceId: record.voiceId, instrument: record.instrument });
+    }
+    return;
+  }
+
   // Lyrics comments: a text-range anchor within one line, Google-Docs style
   // (see src/lib/lyrics-comments.ts for the client half). Server-authoritative
   // and bounds-checked the same way as composition edits — an invalid anchor
@@ -197,6 +224,27 @@ function handleMessage(db: DatabaseSync, roomId: string, sender: Connection, mes
   // broadcast.
   if ((record.type === "lobby.admit" || record.type === "lobby.deny") && isOwner) {
     resolvePending(roomId, String(record.userId ?? ""), record.type === "lobby.admit");
+  }
+
+  // Mic/camera/screen-share status, for the video tile icons: ephemeral UI
+  // state, not room data, so there's nothing to persist — just relayed to
+  // everyone else the same way presence is, with `from` stamped server-side
+  // so a client can't claim to be reporting someone else's state. A late
+  // joiner has nothing to sync against here; their first tile render reflects
+  // whatever the next state update says (or the room's media-consent default
+  // until then).
+  if (record.type === "media.state") {
+    broadcast(
+      roomId,
+      {
+        type: "media.state",
+        from: sender.userId,
+        micOn: Boolean(record.micOn),
+        cameraOn: Boolean(record.cameraOn),
+        sharingScreen: Boolean(record.sharingScreen),
+      },
+      sender,
+    );
   }
 }
 

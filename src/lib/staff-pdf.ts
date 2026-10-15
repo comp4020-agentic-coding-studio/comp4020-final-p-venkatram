@@ -51,10 +51,12 @@ function text(x: number, y: number, size: number, content: string, extra: Record
   return el;
 }
 
-function buildExportSvg(roomName: string, cells: Cell[], bpm: number): SVGSVGElement {
+const BAR_GAP = 70; // vertical space between one bar's staff and the next
+
+function buildExportSvg(roomName: string, cells: Cell[], bpm: number, bars: number): SVGSVGElement {
+  const barHeight = BOTTOM_LINE_Y - TOP_LINE_Y;
   const width = LEFT_MARGIN + NOTE_AREA_X + GRID_STEPS * STEP_WIDTH + RIGHT_MARGIN;
-  const height = TOP_MARGIN + (BOTTOM_LINE_Y - TOP_LINE_Y) + BOTTOM_MARGIN;
-  const staffOriginY = TOP_MARGIN;
+  const height = TOP_MARGIN + bars * barHeight + (bars - 1) * BAR_GAP + BOTTOM_MARGIN;
 
   const svg = svgEl("svg");
   svg.setAttribute("xmlns", SVG_NS);
@@ -78,85 +80,94 @@ function buildExportSvg(roomName: string, cells: Cell[], bpm: number): SVGSVGEle
     }),
   );
 
-  const staff = svgEl("g");
-  staff.setAttribute("transform", `translate(${LEFT_MARGIN}, ${staffOriginY})`);
-
-  for (let line = 0; line < 5; line++) {
-    const y = TOP_LINE_Y + line * HALF_LINE_SPACING * 2;
-    const el = svgEl("line");
-    el.setAttribute("x1", String(NOTE_AREA_X - 12));
-    el.setAttribute("x2", String(NOTE_AREA_X + GRID_STEPS * STEP_WIDTH));
-    el.setAttribute("y1", String(y));
-    el.setAttribute("y2", String(y));
-    el.setAttribute("stroke", "#000000");
-    el.setAttribute("stroke-width", "1.5");
-    staff.append(el);
-  }
-
-  staff.append(text(0, BOTTOM_LINE_Y - 20, 16, "Treble", { "font-style": "italic" }));
-
   if (cells.length === 0) {
-    staff.append(text(NOTE_AREA_X, BOTTOM_LINE_Y + 50, 14, "No notes placed yet.", { fill: "#777777" }));
+    svg.append(text(LEFT_MARGIN + NOTE_AREA_X, TOP_MARGIN + BOTTOM_LINE_Y + 50, 14, "No notes placed yet.", { fill: "#777777" }));
   }
 
-  for (const [step, pitch, duration] of cells) {
-    const note = pitchToStaffNote(pitch, duration);
-    const x = NOTE_AREA_X + (step + 0.5) * STEP_WIDTH;
-    const y = diatonicIndexToY(note.diatonicIndex, BOTTOM_LINE_Y, HALF_LINE_SPACING);
+  // One staff per bar, each drawn by the same per-bar logic the live view
+  // uses (composition-staff.ts's buildBarStaff), reading only the slice of
+  // `cells` whose flat step falls inside that bar.
+  for (let barIndex = 0; barIndex < bars; barIndex++) {
+    const stepOffset = barIndex * GRID_STEPS;
+    const staff = svgEl("g");
+    staff.setAttribute("transform", `translate(${LEFT_MARGIN}, ${TOP_MARGIN + barIndex * (barHeight + BAR_GAP)})`);
 
-    for (let k = 1; k <= note.ledgerLines; k++) {
-      const ledgerY =
-        note.ledgerSide === "below" ? BOTTOM_LINE_Y + k * HALF_LINE_SPACING * 2 : TOP_LINE_Y - k * HALF_LINE_SPACING * 2;
-      const ledger = svgEl("line");
-      ledger.setAttribute("x1", String(x - NOTEHEAD_RX - 4));
-      ledger.setAttribute("x2", String(x + NOTEHEAD_RX + 4));
-      ledger.setAttribute("y1", String(ledgerY));
-      ledger.setAttribute("y2", String(ledgerY));
-      ledger.setAttribute("stroke", "#000000");
-      ledger.setAttribute("stroke-width", "1.5");
-      staff.append(ledger);
+    for (let line = 0; line < 5; line++) {
+      const y = TOP_LINE_Y + line * HALF_LINE_SPACING * 2;
+      const el = svgEl("line");
+      el.setAttribute("x1", String(NOTE_AREA_X - 12));
+      el.setAttribute("x2", String(NOTE_AREA_X + GRID_STEPS * STEP_WIDTH));
+      el.setAttribute("y1", String(y));
+      el.setAttribute("y2", String(y));
+      el.setAttribute("stroke", "#000000");
+      el.setAttribute("stroke-width", "1.5");
+      staff.append(el);
     }
 
-    if (note.sharp) {
-      staff.append(text(x - NOTEHEAD_RX - 16, y + 5, 18, "#"));
-    }
+    staff.append(text(0, BOTTOM_LINE_Y - 20, 16, "Treble", { "font-style": "italic" }));
 
-    if (note.glyph.stem) {
-      const stemX = x + NOTEHEAD_RX - 1;
-      const stem = svgEl("line");
-      stem.setAttribute("x1", String(stemX));
-      stem.setAttribute("x2", String(stemX));
-      stem.setAttribute("y1", String(y));
-      stem.setAttribute("y2", String(y - STEM_HEIGHT));
-      stem.setAttribute("stroke", "#000000");
-      stem.setAttribute("stroke-width", "2");
-      staff.append(stem);
+    for (const [step, pitch, duration] of cells) {
+      const localStep = step - stepOffset;
+      if (localStep < 0 || localStep >= GRID_STEPS) continue;
+      const note = pitchToStaffNote(pitch, duration);
+      const x = NOTE_AREA_X + (localStep + 0.5) * STEP_WIDTH;
+      const y = diatonicIndexToY(note.diatonicIndex, BOTTOM_LINE_Y, HALF_LINE_SPACING);
 
-      for (let f = 0; f < note.glyph.flags; f++) {
-        const flagY = y - STEM_HEIGHT + f * 14;
-        const flag = svgEl("path");
-        flag.setAttribute("d", `M ${stemX} ${flagY} q 16 4 16 20 q -8 -8 -16 -6 Z`);
-        flag.setAttribute("fill", "#000000");
-        staff.append(flag);
+      for (let k = 1; k <= note.ledgerLines; k++) {
+        const ledgerY =
+          note.ledgerSide === "below" ? BOTTOM_LINE_Y + k * HALF_LINE_SPACING * 2 : TOP_LINE_Y - k * HALF_LINE_SPACING * 2;
+        const ledger = svgEl("line");
+        ledger.setAttribute("x1", String(x - NOTEHEAD_RX - 4));
+        ledger.setAttribute("x2", String(x + NOTEHEAD_RX + 4));
+        ledger.setAttribute("y1", String(ledgerY));
+        ledger.setAttribute("y2", String(ledgerY));
+        ledger.setAttribute("stroke", "#000000");
+        ledger.setAttribute("stroke-width", "1.5");
+        staff.append(ledger);
       }
+
+      if (note.sharp) {
+        staff.append(text(x - NOTEHEAD_RX - 16, y + 5, 18, "#"));
+      }
+
+      if (note.glyph.stem) {
+        const stemX = x + NOTEHEAD_RX - 1;
+        const stem = svgEl("line");
+        stem.setAttribute("x1", String(stemX));
+        stem.setAttribute("x2", String(stemX));
+        stem.setAttribute("y1", String(y));
+        stem.setAttribute("y2", String(y - STEM_HEIGHT));
+        stem.setAttribute("stroke", "#000000");
+        stem.setAttribute("stroke-width", "2");
+        staff.append(stem);
+
+        for (let f = 0; f < note.glyph.flags; f++) {
+          const flagY = y - STEM_HEIGHT + f * 14;
+          const flag = svgEl("path");
+          flag.setAttribute("d", `M ${stemX} ${flagY} q 16 4 16 20 q -8 -8 -16 -6 Z`);
+          flag.setAttribute("fill", "#000000");
+          staff.append(flag);
+        }
+      }
+
+      const notehead = svgEl("ellipse");
+      notehead.setAttribute("cx", String(x));
+      notehead.setAttribute("cy", String(y));
+      notehead.setAttribute("rx", String(NOTEHEAD_RX));
+      notehead.setAttribute("ry", String(NOTEHEAD_RY));
+      if (note.glyph.open) {
+        notehead.setAttribute("fill", "#ffffff");
+        notehead.setAttribute("stroke", "#000000");
+        notehead.setAttribute("stroke-width", "2.5");
+      } else {
+        notehead.setAttribute("fill", "#000000");
+      }
+      staff.append(notehead);
     }
 
-    const notehead = svgEl("ellipse");
-    notehead.setAttribute("cx", String(x));
-    notehead.setAttribute("cy", String(y));
-    notehead.setAttribute("rx", String(NOTEHEAD_RX));
-    notehead.setAttribute("ry", String(NOTEHEAD_RY));
-    if (note.glyph.open) {
-      notehead.setAttribute("fill", "#ffffff");
-      notehead.setAttribute("stroke", "#000000");
-      notehead.setAttribute("stroke-width", "2.5");
-    } else {
-      notehead.setAttribute("fill", "#000000");
-    }
-    staff.append(notehead);
+    svg.append(staff);
   }
 
-  svg.append(staff);
   return svg;
 }
 
@@ -169,8 +180,14 @@ function slugify(name: string): string {
   return slug.length > 0 ? slug : "composition";
 }
 
-export async function exportCompositionPdf(roomId: string, roomName: string, cells: Cell[], bpm: number): Promise<void> {
-  const svg = buildExportSvg(roomName, cells, bpm);
+export async function exportCompositionPdf(
+  roomId: string,
+  roomName: string,
+  cells: Cell[],
+  bpm: number,
+  bars: number,
+): Promise<void> {
+  const svg = buildExportSvg(roomName, cells, bpm, bars);
   const width = Number(svg.getAttribute("width"));
   const height = Number(svg.getAttribute("height"));
 

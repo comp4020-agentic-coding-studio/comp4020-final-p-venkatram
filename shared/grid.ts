@@ -48,12 +48,15 @@ export function isValidDuration(duration: number): duration is DurationCategory 
   return (DURATION_CATEGORIES as readonly number[]).includes(duration);
 }
 
-export function isValidCell(step: number, pitch: number, duration: number): boolean {
+// `maxStep` defaults to one bar (GRID_STEPS) but a voice with more bars
+// (shared/composition.ts's Voice.bars) passes its real total — a cell's
+// `step` is a flat index across every bar that voice has, not reset per bar.
+export function isValidCell(step: number, pitch: number, duration: number, maxStep: number = GRID_STEPS): boolean {
   return (
     Number.isInteger(step) &&
     Number.isInteger(pitch) &&
     step >= 0 &&
-    step < GRID_STEPS &&
+    step < maxStep &&
     pitch >= 0 &&
     pitch < GRID_PITCHES &&
     isValidDuration(duration)
