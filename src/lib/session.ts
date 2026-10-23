@@ -23,12 +23,20 @@ export async function logout(): Promise<void> {
 
 // Renders "Log in / Sign up" or "<name> · Log out" into the header's
 // #auth-nav slot, present on every page via Layout.astro. The hamburger menu
-// itself is always reachable (Layout.astro) regardless of session state —
-// without the menu, a logged-out visitor on a bare page like /activity/ has
-// no way to navigate anywhere at all.
+// itself only appears once a session is confirmed — logged-out visitors have
+// no nav to open, just the brand link.
 export async function renderAuthNav(): Promise<SessionUser | null> {
   const nav = document.getElementById("auth-nav");
+  const toggle = document.getElementById("site-nav-toggle");
+  const siteNav = document.getElementById("site-nav");
   const user = await fetchSession();
+  if (user) {
+    toggle?.removeAttribute("hidden");
+    siteNav?.removeAttribute("hidden");
+  } else {
+    toggle?.setAttribute("hidden", "");
+    siteNav?.setAttribute("hidden", "");
+  }
   if (!nav) return user;
   nav.textContent = "";
   if (user) {

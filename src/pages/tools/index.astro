@@ -1,0 +1,38 @@
+---
+import Layout from "../../layouts/Layout.astro";
+---
+
+<Layout title="Tools" description="A virtual piano, music-theory finders, and a Carnatic/Western converter.">
+  <h1>Tools</h1>
+  <p class="muted">Standalone practice tools — nothing here is tied to a room or shared with anyone else.</p>
+
+  <section>
+    <h2>Virtual piano</h2>
+    <div id="piano-root"></div>
+  </section>
+
+  <section style="margin-top:2rem;">
+    <h2>Finders</h2>
+    <div id="finder-root"></div>
+  </section>
+
+  <section style="margin-top:2rem;">
+    <h2>Carnatic / Western converter</h2>
+    <div id="carnatic-root"></div>
+  </section>
+
+  <script>
+    import { initPianoTool } from "../../lib/piano-tool";
+    import { initFinderTool } from "../../lib/finder-tool";
+    import { initCarnaticConverter } from "../../lib/carnatic-converter";
+
+    const pianoRoot = document.getElementById("piano-root");
+    if (pianoRoot) initPianoTool(pianoRoot);
+
+    const finderRoot = document.getElementById("finder-root");
+    if (finderRoot) initFinderTool(finderRoot);
+
+    const carnaticRoot = document.getElementById("carnatic-root");
+    if (carnaticRoot) initCarnaticConverter(carnaticRoot);
+  </script>
+</Layout>

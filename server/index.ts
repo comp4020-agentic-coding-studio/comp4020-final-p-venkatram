@@ -19,6 +19,7 @@ import { handleLyricsApi } from "./routes/lyrics.ts";
 import { handleLibraryApi } from "./routes/library.ts";
 import { handleStatsApi } from "./routes/stats.ts";
 import { handleVideosApi } from "./routes/videos.ts";
+import { handleSheetMusicApi } from "./routes/sheet-music.ts";
 import { attachWebSocketServer } from "./ws.ts";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -31,6 +32,7 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, path: string
   if (await handleLyricsApi(req, res, path, db)) return true;
   if (await handleLibraryApi(req, res, path, db)) return true;
   if (await handleVideosApi(req, res, path, db)) return true;
+  if (await handleSheetMusicApi(req, res, path, db)) return true;
   if (await handleRoomsApi(req, res, path, db)) return true;
   if (await handleStatsApi(req, res, path, db)) return true;
   if (await handleActivityApi(req, res, path)) return true;

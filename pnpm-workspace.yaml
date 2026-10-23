@@ -5,6 +5,11 @@ allowBuilds:
   # postinstall.js before allowing.
   core-js: true
   esbuild: true
+  # opensheetmusicdisplay's optional native WebGL binding, for headless
+  # rendering in Node — this app only ever loads opensheetmusicdisplay in
+  # the browser (src/lib/sheet-music.ts), never from the server process, so
+  # there's no reason to compile a native module for it.
+  gl: false
 minimumReleaseAgeExclude:
   - '@astrojs/internal-helpers@0.12.0'
   - '@astrojs/markdown-satteri@0.4.3'

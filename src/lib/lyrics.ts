@@ -37,6 +37,17 @@ export function initLyrics(
   const header = document.createElement("div");
   header.className = "lyrics-chat-header";
 
+  // Collapses the lines/comments content (not the whole floating widget —
+  // that's initLyricsWidget's own launcher-bubble toggle in room-page.ts)
+  // down to just this header, so the panel can be shrunk without losing the
+  // widget's open/closed state.
+  const collapseBtn = document.createElement("button");
+  collapseBtn.type = "button";
+  collapseBtn.className = "lyrics-chat-collapse";
+  collapseBtn.setAttribute("aria-label", "Collapse lyrics");
+  collapseBtn.setAttribute("aria-expanded", "true");
+  collapseBtn.innerHTML = "&#9662;";
+
   const titleEl = document.createElement("h3");
   titleEl.className = "lyrics-chat-title";
 
@@ -52,7 +63,7 @@ export function initLyrics(
   closeBtn.innerHTML = "&times;";
   closeBtn.addEventListener("click", onClose);
 
-  header.append(titleEl, exportBtn, closeBtn);
+  header.append(collapseBtn, titleEl, exportBtn, closeBtn);
 
   const exportError = document.createElement("p");
   exportError.className = "error-text";
@@ -81,7 +92,17 @@ export function initLyrics(
   const titleInput = uploadForm.elements.namedItem("title") as HTMLInputElement;
   const rawInput = uploadForm.elements.namedItem("raw") as HTMLTextAreaElement;
 
-  container.append(header, exportError, linesEl, commentsPanel, uploadForm);
+  const contentWrap = document.createElement("div");
+  contentWrap.className = "lyrics-chat-content";
+  contentWrap.append(exportError, linesEl, commentsPanel);
+
+  collapseBtn.addEventListener("click", () => {
+    const collapsed = contentWrap.toggleAttribute("hidden");
+    collapseBtn.setAttribute("aria-expanded", String(!collapsed));
+    collapseBtn.innerHTML = collapsed ? "&#9656;" : "&#9662;";
+  });
+
+  container.append(header, contentWrap, uploadForm);
 
   const comments: LyricsCommentsApi = initLyricsComments({
     linesContainer: linesEl,

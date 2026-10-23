@@ -1212,6 +1212,24 @@ button.video-tile-status-icon[aria-pressed="true"] {
   padding: 0 0.25rem;
 }
 
+.lyrics-chat-collapse {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.lyrics-chat-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .lyrics-chat-messages {
   flex: 1;
   min-height: 0;
@@ -1262,7 +1280,22 @@ button.video-tile-status-icon[aria-pressed="true"] {
 
 .lyrics-comment-add-btn,
 .lyrics-comment-form {
+  /* Above .lyrics-widget's z-index: 70 — these are appended to document.body
+     (not inside .lyrics-widget), so without their own higher z-index the
+     open widget's own stacking context paints over them and the "Add
+     comment" button becomes invisible (though still clickable-by-accident)
+     behind the panel. */
+  z-index: 90;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.lyrics-comment-color-dot {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  margin-right: 0.35rem;
+  flex-shrink: 0;
 }
 
 .lyrics-comment-form {
@@ -1444,4 +1477,47 @@ button.video-tile-status-icon[aria-pressed="true"] {
     padding-left: 1rem;
     padding-right: 1rem;
   }
+}
+
+/* The Tools page's virtual piano: white keys lay out the whole width in a
+   flex row (so the keyboard fills whatever it's given), black keys are
+   absolutely positioned over them via each key's own inline left/width
+   (piano-tool.ts) rather than CSS alone, since their offsets depend on which
+   white keys straddle them. */
+.piano-keyboard {
+  position: relative;
+  height: 9rem;
+  width: 100%;
+  max-width: 40rem;
+  margin: 0.75rem 0;
+  user-select: none;
+}
+
+.piano-key {
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 0 0 0.3rem 0.3rem;
+  cursor: pointer;
+}
+
+.piano-key-white {
+  height: 100%;
+  background: var(--surface);
+  z-index: 1;
+}
+
+.piano-key-black {
+  height: 60%;
+  background: var(--text);
+  z-index: 2;
+}
+
+.piano-key.is-active.piano-key-white {
+  background: var(--accent-3);
+}
+
+.piano-key.is-active.piano-key-black {
+  background: var(--accent);
 }

@@ -13,6 +13,7 @@ import { initRecordingPanel } from "./recording-panel";
 import { initLibraryPanel } from "./library-panel";
 import { initMediaControls } from "./media-controls";
 import { initKaraoke } from "./karaoke";
+import { colorForUserId } from "./user-color";
 
 interface Room {
   id: string;
@@ -21,13 +22,18 @@ interface Room {
 }
 
 function renderPresence(target: HTMLElement, users: PresentUser[], selfId: string): void {
+  target.innerHTML = "";
   if (users.length === 0) {
     target.textContent = "just you, so far";
     return;
   }
-  target.textContent = users
-    .map((user) => (user.userId === selfId ? `${user.displayName} (you)` : user.displayName))
-    .join(", ");
+  users.forEach((user, index) => {
+    if (index > 0) target.append(document.createTextNode(", "));
+    const span = document.createElement("span");
+    span.style.color = colorForUserId(user.userId);
+    span.textContent = user.userId === selfId ? `${user.displayName} (you)` : user.displayName;
+    target.append(span);
+  });
 }
 
 // Switches which room panel is visible — never tears anything down. The

@@ -4,13 +4,16 @@ const MAX_BODY_BYTES = 1_000_000; // 1MB — plenty for JSON forms, not for file
 
 export class BadRequestError extends Error {}
 
-export function readJsonBody<T>(req: IncomingMessage): Promise<T> {
+// `maxBytes` lets a specific route (e.g. sheet-music uploads, base64-encoded
+// MusicXML can run well past 1MB) raise the ceiling for its own body without
+// loosening the shared default every other route relies on.
+export function readJsonBody<T>(req: IncomingMessage, maxBytes: number = MAX_BODY_BYTES): Promise<T> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
     req.on("data", (chunk: Buffer) => {
       size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
+      if (size > maxBytes) {
         reject(new BadRequestError("request body too large"));
         req.destroy();
         return;

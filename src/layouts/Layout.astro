@@ -28,16 +28,18 @@ const { title, description = "A collaborative music-education platform for dista
   </head>
   <body>
     <header class="site-header">
-      <button type="button" class="hamburger-btn" id="site-nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">
+      <button type="button" class="hamburger-btn" id="site-nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu" hidden>
         <span class="hamburger-icon" aria-hidden="true"></span>
       </button>
       <a class="brand" href="/">Wave<span class="brand-accent">Forge</span></a>
     </header>
 
     <div class="site-nav-backdrop" id="site-nav-backdrop"></div>
-    <nav class="site-nav" id="site-nav" aria-label="Main menu" aria-hidden="true">
+    <nav class="site-nav" id="site-nav" aria-label="Main menu" aria-hidden="true" hidden>
       <button type="button" class="site-nav-close" id="site-nav-close" aria-label="Close menu">&times;</button>
       <a class="site-nav-item" href="/rooms/">Rooms</a>
+      <a class="site-nav-item" href="/tools/">Tools</a>
+      <a class="site-nav-item" href="/sheet-music/">Sheet Music Hub</a>
       <a class="site-nav-item" href="/settings/">Settings</a>
       <a class="site-nav-item" href="/activity/">Activity</a>
       <span id="auth-nav"></span>
@@ -58,9 +60,12 @@ const { title, description = "A collaborative music-education platform for dista
       import { initThemeToggle } from "../lib/theme";
       import { renderAuthNav } from "../lib/session";
       import { initSiteNav } from "../lib/site-nav";
+      import { initIdleLogout } from "../lib/idle-logout";
       initThemeToggle();
       initSiteNav();
-      void renderAuthNav();
+      void renderAuthNav().then((user) => {
+        if (user) initIdleLogout();
+      });
     </script>
   </body>
 </html>

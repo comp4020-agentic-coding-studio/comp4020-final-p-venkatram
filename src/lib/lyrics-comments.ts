@@ -5,6 +5,8 @@
 // module owns comment state, the marked-up line rendering, and the
 // selection-to-"add a comment" UI; src/lib/lyrics.ts owns everything else
 // about the panel (upload, line list) and calls back into this for both.
+import { colorForUserId } from "./user-color";
+
 export interface LyricsComment {
   id: string;
   lineIndex: number;
@@ -65,7 +67,12 @@ export function initLyricsComments(opts: Options): LyricsCommentsApi {
       const meta = document.createElement("p");
       meta.className = "muted";
       meta.style.margin = "0";
-      meta.textContent = comment.authorName;
+      meta.style.display = "flex";
+      meta.style.alignItems = "center";
+      const dot = document.createElement("span");
+      dot.className = "lyrics-comment-color-dot";
+      dot.style.background = colorForUserId(comment.authorId);
+      meta.append(dot, document.createTextNode(comment.authorName));
       const body = document.createElement("p");
       body.style.margin = "0.15rem 0 0";
       body.textContent = comment.text;
@@ -94,14 +101,17 @@ export function initLyricsComments(opts: Options): LyricsCommentsApi {
   addButton.textContent = "Add comment";
   addButton.style.position = "fixed";
   addButton.style.display = "none";
-  addButton.style.zIndex = "60";
+  // Above .lyrics-widget's z-index: 70 (global.css) — these popovers are
+  // appended to document.body, not inside the widget, so without this they
+  // render underneath the open floating lyrics panel and become invisible.
+  addButton.style.zIndex = "90";
   document.body.append(addButton);
 
   const commentForm = document.createElement("form");
   commentForm.className = "lyrics-comment-form";
   commentForm.style.position = "fixed";
   commentForm.style.display = "none";
-  commentForm.style.zIndex = "60";
+  commentForm.style.zIndex = "90";
   commentForm.innerHTML = `
     <textarea rows="2" maxlength="2000" placeholder="Add a comment" required></textarea>
     <div style="display:flex; gap:0.4rem; margin-top:0.4rem;">
@@ -209,6 +219,7 @@ export function initLyricsComments(opts: Options): LyricsCommentsApi {
         const mark = document.createElement("mark");
         mark.className = "lyrics-comment-mark";
         mark.dataset.commentId = comment.id;
+        mark.style.background = colorForUserId(comment.authorId);
         mark.title = `${comment.authorName}: ${comment.text}`;
         mark.textContent = text.slice(comment.startOffset, comment.endOffset);
         target.append(mark);

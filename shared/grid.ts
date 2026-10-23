@@ -31,6 +31,18 @@ export const DURATION_RELEASE_MULTIPLIERS: Record<DurationCategory, number> = {
   4: 2.2, // whole
 };
 
+// How many 16th-step slots a duration category actually occupies on the grid
+// — used to hold a note's gain at its sustained level for its whole written
+// length (composition-player.ts), rather than letting the release tail alone
+// stand in for the note's audible duration.
+export const DURATION_STEPS: Record<DurationCategory, number> = {
+  0: 1, // sixteenth
+  1: 2, // eighth
+  2: 4, // quarter
+  3: 8, // half
+  4: 16, // whole
+};
+
 export type Cell = [step: number, pitch: number, duration: DurationCategory];
 
 export function pitchIndexToMidi(pitchIndex: number): number {
