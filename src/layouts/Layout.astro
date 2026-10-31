@@ -40,9 +40,6 @@ const { title, description = "A collaborative music-education platform for dista
       <a class="site-nav-item" href="/rooms/">Rooms</a>
       <a class="site-nav-item" href="/tools/">Tools</a>
       <a class="site-nav-item" href="/sheet-music/">Sheet Music Hub</a>
-      <a class="site-nav-item" href="/settings/">Settings</a>
-      <a class="site-nav-item" href="/activity/">Activity</a>
-      <span id="auth-nav"></span>
       <div id="room-nav-section" class="site-nav-section" hidden>
         <hr class="site-nav-divider" />
         <p class="site-nav-heading">This room</p>
@@ -50,6 +47,13 @@ const { title, description = "A collaborative music-education platform for dista
         <button type="button" class="site-nav-item room-nav-btn" data-panel="library" aria-selected="false">Library</button>
         <button type="button" class="site-nav-item room-nav-btn" data-panel="compose" aria-selected="false">Composition Space</button>
         <button type="button" class="site-nav-item room-nav-btn" data-panel="karaoke" aria-selected="false">Karaoke</button>
+      </div>
+      <div class="site-nav-bottom">
+        <hr class="site-nav-divider" />
+        <span id="auth-nav"></span>
+        <a class="site-nav-item" href="/settings/">Settings</a>
+        <a class="site-nav-item" href="/activity/">Activity</a>
+        <span id="auth-logout"></span>
       </div>
     </nav>
 

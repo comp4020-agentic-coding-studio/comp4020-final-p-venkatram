@@ -514,6 +514,7 @@ dialog::backdrop {
   flex-direction: column;
   align-items: stretch;
   gap: 0.6rem;
+  overflow-y: auto;
   transform: translateX(-100%);
   transition: transform 0.2s ease;
   pointer-events: none;
@@ -568,12 +569,25 @@ dialog::backdrop {
   margin-bottom: 0.5rem;
 }
 
-#auth-nav {
+#auth-nav,
+#auth-logout {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0.4rem;
   width: 100%;
+}
+
+/* Pushed to the bottom of the nav panel's flex column — username, Settings,
+   Activity, and Log out read as account controls, separate from the site's
+   content links above them. */
+.site-nav-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: 100%;
+  margin-top: auto;
 }
 
 button:focus-visible,

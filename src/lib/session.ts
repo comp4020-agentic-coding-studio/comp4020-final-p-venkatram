@@ -21,12 +21,15 @@ export async function logout(): Promise<void> {
   await fetch("/api/logout", { method: "POST", credentials: "same-origin" });
 }
 
-// Renders "Log in / Sign up" or "<name> · Log out" into the header's
-// #auth-nav slot, present on every page via Layout.astro. The hamburger menu
-// itself only appears once a session is confirmed — logged-out visitors have
-// no nav to open, just the brand link.
+// Renders the identity ("<name>" or "Log in / Sign up") into the header's
+// #auth-nav slot and the sign-out action into #auth-logout, present on every
+// page via Layout.astro — split into two slots so Settings/Activity can sit
+// between the username and the Log out button in the nav panel's markup.
+// The hamburger menu itself only appears once a session is confirmed —
+// logged-out visitors have no nav to open, just the brand link.
 export async function renderAuthNav(): Promise<SessionUser | null> {
   const nav = document.getElementById("auth-nav");
+  const logoutSlot = document.getElementById("auth-logout");
   const toggle = document.getElementById("site-nav-toggle");
   const siteNav = document.getElementById("site-nav");
   const user = await fetchSession();
@@ -37,12 +40,14 @@ export async function renderAuthNav(): Promise<SessionUser | null> {
     toggle?.setAttribute("hidden", "");
     siteNav?.setAttribute("hidden", "");
   }
-  if (!nav) return user;
-  nav.textContent = "";
+  if (nav) nav.textContent = "";
+  if (logoutSlot) logoutSlot.textContent = "";
   if (user) {
     const name = document.createElement("p");
     name.className = "site-nav-heading";
     name.textContent = user.displayName;
+    nav?.append(name);
+
     const logoutBtn = document.createElement("button");
     logoutBtn.type = "button";
     logoutBtn.className = "site-nav-item";
@@ -51,8 +56,8 @@ export async function renderAuthNav(): Promise<SessionUser | null> {
       await logout();
       window.location.href = "/";
     });
-    nav.append(name, logoutBtn);
-  } else {
+    logoutSlot?.append(logoutBtn);
+  } else if (nav) {
     const login = document.createElement("a");
     login.className = "site-nav-item";
     login.href = "/login/";

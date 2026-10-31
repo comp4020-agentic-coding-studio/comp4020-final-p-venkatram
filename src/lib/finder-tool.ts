@@ -94,6 +94,7 @@ function initNoteFinder(): HTMLElement {
   row.style.display = "flex";
   row.style.gap = "0.5rem";
   row.style.alignItems = "flex-end";
+  row.style.flexWrap = "wrap";
   row.append(labeledField("MIDI note number", midiInput), playBtn);
   body.append(row, result);
   return root;
@@ -129,6 +130,7 @@ function initIntervalFinder(): HTMLElement {
   row.style.display = "flex";
   row.style.gap = "0.5rem";
   row.style.alignItems = "flex-end";
+  row.style.flexWrap = "wrap";
   row.append(labeledField("First note (MIDI)", firstMidi), labeledField("Second note (MIDI)", secondMidi), playBtn);
   body.append(row, result);
   return root;
@@ -170,6 +172,7 @@ function initChordFinder(): HTMLElement {
   row.style.display = "flex";
   row.style.gap = "0.5rem";
   row.style.alignItems = "flex-end";
+  row.style.flexWrap = "wrap";
   row.append(labeledField("Root", rootSelect), labeledField("Quality", qualitySelect), playBtn);
   body.append(row, result);
   return root;
@@ -211,6 +214,7 @@ function initScaleFinder(): HTMLElement {
   row.style.display = "flex";
   row.style.gap = "0.5rem";
   row.style.alignItems = "flex-end";
+  row.style.flexWrap = "wrap";
   row.append(labeledField("Root", rootSelect), labeledField("Scale", scaleSelect), playBtn);
   body.append(row, result);
   return root;
