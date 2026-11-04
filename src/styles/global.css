@@ -84,6 +84,27 @@ img {
   display: none !important;
 }
 
+/* The room underneath (#room-root, room/index.astro) is revealed as soon as
+   the room connects — before this attendee's own media-consent card
+   (#consent-root) has resolved, room-page.ts no longer waits on that choice
+   to admit people from the lobby or show the room's own content. Without
+   this rule the card would just sit in the page's normal flow, with the
+   room's title and buttons visible (and clickable) right underneath it. It
+   is only ever present while there's a decision to make — room-page.ts
+   empties it the moment the attendee picks — so :empty keeps it out of the
+   way for everyone else, including the organizer skipping it via
+   isOwner in room-page.ts, who never gets this card at all. */
+#consent-root:not(:empty) {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+}
+
 a {
   color: var(--accent-2);
 }
@@ -794,6 +815,17 @@ select {
   display: block;
 }
 
+/* Self-preview only (room-page.ts's makeSelfTile) — flips the camera feed
+   left-right so it reads as a mirror, the convention every webcam preview
+   follows. Never applied to a remote peer's tile: what they send is their
+   actual left and right, and flipping it there would be wrong for everyone
+   else watching (and for a recording, recording-panel.ts). Also turned off
+   for a screen share (onLocalVideoChanged in room-page.ts), since a shared
+   screen is never mirrored either. */
+.video-tile-mirrored {
+  transform: scaleX(-1);
+}
+
 .video-tile-label {
   position: absolute;
   left: 0.5rem;
@@ -1342,6 +1374,22 @@ button.video-tile-status-icon[aria-pressed="true"] {
 
 .lyrics-comment-row:last-child {
   border-bottom: none;
+}
+
+/* Floats above the consent overlay (#consent-root, z-index 80) rather than
+   sitting in #room-root's normal flow — the organizer must be able to see
+   and act on someone waiting at the door regardless of where they are in
+   their own camera/mic choice (room-page.ts no longer makes admitting wait
+   on that), and a card buried behind the consent card's scrim would defeat
+   that entirely. Harmless once consent is done too: by then #consent-root
+   is empty and out of the way, so this just reads as a normal toast. */
+#lobby-admin-root:not(:empty) {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 85;
+  width: min(28rem, calc(100vw - 2.5rem));
 }
 
 .lobby-admin-card {

@@ -1,5 +1,5 @@
 import { requireSession } from "./session";
-import { connectToRoom, type PresentUser, type RoomConnection } from "./room-connection";
+import { connectToRoom, type PresentUser, type RoomConnection, type RoomMessage } from "./room-connection";
 import { askForMediaConsent } from "./media-consent";
 import { askForRoomGate } from "./room-gate";
 import { initLobbyAdmin, type LobbyAdminController, type PendingRequest } from "./lobby-admin";
@@ -239,13 +239,23 @@ const tileActions = new WeakMap<HTMLElement, VideoTileActions>();
 // every [data-peer="..."] lookup below finds — it holds the tile itself plus
 // the status row underneath it, so "find this peer's tile" and "find this
 // peer's status row" both resolve from the one element.
+// `stream` is optional: a peer who joined with no camera or mic (an
+// explicit media-consent choice, src/lib/media-consent.ts) sends no WebRTC
+// track at all, so there's nothing for `ontrack` to ever fire with — but
+// they're still in the room and everyone else must still see a tile for
+// them (just the placeholder, same as anyone with their camera off), not no
+// tile at all. The tile is created from presence (room-page.ts's
+// onPresenceSync/onPresenceJoin), and attachStream fills in the <video>
+// later if that peer's track ever does arrive (mid-call "turn camera on",
+// screen share from a no-media start).
 function makeVideoTile(
   id: string,
   label: string,
-  stream: MediaStream,
+  stream: MediaStream | null,
   muted: boolean,
   initialState: VideoTileState,
   actions?: VideoTileActions,
+  mirrored = false,
 ): HTMLElement {
   const wrap = document.createElement("div");
   wrap.className = "video-tile-wrap";
@@ -257,10 +267,17 @@ function makeVideoTile(
   video.autoplay = true;
   video.playsInline = true;
   video.muted = muted;
-  video.srcObject = stream;
+  if (stream) video.srcObject = stream;
+  // Only the self tile mirrors (the "looking in a mirror" convention a
+  // webcam preview is expected to follow) — a remote peer's video is never
+  // mirrored, since what they send is what everyone else, and the recording
+  // (recording-panel.ts), should see: their actual left and right, not
+  // flipped. A screen share is never mirrored either way (see
+  // onLocalVideoChanged below, which turns this off for one).
+  video.classList.toggle("video-tile-mirrored", mirrored);
 
   const placeholder = buildCameraOffPlaceholder(label);
-  placeholder.hidden = initialState.cameraOn || initialState.sharingScreen;
+  placeholder.hidden = Boolean(stream) && (initialState.cameraOn || initialState.sharingScreen);
 
   const caption = document.createElement("span");
   caption.className = "video-tile-label";
@@ -285,6 +302,13 @@ function makeVideoTile(
 
   wrap.append(tile, statusRow);
   return wrap;
+}
+
+// Fills in a tile that was created without a stream (the no-media-at-all
+// case above) once that peer's track actually arrives over WebRTC.
+function attachStreamToTile(wrap: HTMLElement, stream: MediaStream): void {
+  const video = wrap.querySelector("video");
+  if (video) video.srcObject = stream;
 }
 
 function updateVideoTileState(wrap: HTMLElement, state: VideoTileState): void {
@@ -329,16 +353,23 @@ export function initRoomPage(): void {
         }
       }
 
-      const consentRoot = document.getElementById("consent-root");
-      const localStream = consentRoot ? await askForMediaConsent(consentRoot) : null;
-
-      root?.removeAttribute("hidden");
-
+      // The room connects — and, for the organizer, the lobby queue becomes
+      // actionable — immediately, before anyone's own camera/mic choice is
+      // settled. The join-request flow (server/realtime/lobby.ts) holds each
+      // requester's HTTP response open regardless of whether the organizer
+      // has a stream yet, so admitting people, chatting, and composing
+      // together shouldn't wait on that decision either. A non-owner only
+      // ever reaches this point after already being admitted (the gate
+      // above), so for them this just means the room underneath their own
+      // consent card is live a little sooner, not a security boundary moving.
       let lobbyAdmin: LobbyAdminController | null = null;
+      let conn: RoomConnection;
       if (isOwner) {
         const lobbyAdminRoot = document.getElementById("lobby-admin-root");
         if (lobbyAdminRoot) lobbyAdmin = initLobbyAdmin(lobbyAdminRoot, (msg) => conn.send(msg));
       }
+
+      root?.removeAttribute("hidden");
 
       const copyLinkBtn = document.getElementById("copy-room-link");
       if (copyLinkBtn instanceof HTMLButtonElement) {
@@ -361,24 +392,29 @@ export function initRoomPage(): void {
         if (presenceList) renderPresence(presenceList, [...presentUsers.values()], self.id);
       };
 
-      // Mic/camera start enabled exactly when the consent step actually
-      // acquired that kind of track — matches what media-controls.ts reports
-      // as its own initial reportState() call, so the tile never has to
-      // guess at a state the controls haven't rendered yet. The self tile
-      // itself is created further down, once `controls` exists — its status
-      // icons double as the mic/camera/share toggles, so they need
-      // `controls`'s toggle functions before the tile can be built.
-      const initialSelfState: VideoTileState = {
-        micOn: Boolean(localStream?.getAudioTracks().length),
-        cameraOn: Boolean(localStream?.getVideoTracks().length),
-        sharingScreen: false,
-      };
+      // Everyone present gets a tile the moment they're known (presence
+      // join/sync below), whether or not they ever send a WebRTC track —
+      // someone who chose "join without media" (media-consent.ts) still
+      // needs to be visible to everyone else in the room, the same way their
+      // camera-off placeholder would be if they *had* sent a track. Without
+      // this, a no-media peer would only ever get a tile via onPeerStream,
+      // which never fires for them since they have nothing to send.
+      function ensurePeerTile(userId: string, displayName: string): void {
+        if (!videoGrid || videoGrid.querySelector(`[data-peer="${userId}"]`)) return;
+        videoGrid.append(
+          makeVideoTile(userId, displayName, null, false, {
+            micOn: false,
+            cameraOn: false,
+            sharingScreen: false,
+          }),
+        );
+        videoGridOverflow.recheck();
+      }
 
       const compositionRoot = document.getElementById("composition-root");
       const lyricsRoot = document.getElementById("lyrics-root");
       const lyricsWidget = initLyricsWidget();
 
-      let conn: RoomConnection;
       const compositionController = compositionRoot
         ? initCompositionGrid(compositionRoot, { send: (msg) => conn.send(msg) }, roomId, data.room.name)
         : null;
@@ -388,30 +424,31 @@ export function initRoomPage(): void {
       const karaokeRoot = document.getElementById("karaoke-root");
       const karaokeController = karaokeRoot ? initKaraoke(karaokeRoot, roomId) : null;
       const remoteStreams = new Map<string, MediaStream>();
-      // media.state only broadcasts on change (media-controls.ts's
-      // reportState), so a peer who joins afterward would otherwise never
-      // learn our starting state — resent whenever a new peer's stream
-      // actually connects (onPeerStream below), since the broadcast reaches
-      // the whole room anyway, not just the newcomer.
-      let lastReportedState: VideoTileState = initialSelfState;
+      // Starts at "nothing yet" and is corrected the moment this attendee's
+      // own consent choice resolves (wireLocalMedia below) — none of this
+      // (connecting, the lobby queue, composition, lyrics) should have to
+      // wait on that choice, so it can't assume the real value is in yet.
+      let lastReportedState: VideoTileState = { micOn: false, cameraOn: false, sharingScreen: false };
       const media = new RoomMedia(
         { send: (msg) => conn.send(msg) },
         {
           onPeerStream: (peer) => {
             remoteStreams.set(peer.userId, peer.stream);
             if (!videoGrid) return;
-            videoGrid.querySelector(`[data-peer="${peer.userId}"]`)?.remove();
+            // ensurePeerTile (presence join/sync) already created this
+            // peer's tile, possibly before their stream existed — attach
+            // into it rather than replacing it, so a tile already on screen
+            // never flashes or loses its place in the grid when the track
+            // actually arrives.
+            ensurePeerTile(peer.userId, peer.displayName);
+            const wrap = videoGrid.querySelector<HTMLElement>(`[data-peer="${peer.userId}"]`);
+            if (!wrap) return;
+            attachStreamToTile(wrap, peer.stream);
             // Assumed on until this peer's own media.state says otherwise —
             // their track existing at all means they joined with it, and the
             // state broadcast (sent right after media-controls.ts mounts for
             // them) corrects this within moments if it's actually off.
-            videoGrid.append(
-              makeVideoTile(peer.userId, peer.displayName, peer.stream, false, {
-                micOn: true,
-                cameraOn: true,
-                sharingScreen: false,
-              }),
-            );
+            updateVideoTileState(wrap, { micOn: true, cameraOn: true, sharingScreen: false });
             videoGridOverflow.recheck();
             conn.send({ type: "media.state", ...lastReportedState });
           },
@@ -422,57 +459,141 @@ export function initRoomPage(): void {
           },
         },
       );
-      media.setLocalStream(localStream);
 
-      // Built before the self tile exists — its toggle functions become
-      // that tile's clickable status icons (room-page.ts no longer has a
-      // separate "Mute mic" / "Turn camera off" / "Share screen" button
-      // row; those three actions live on the tile itself now).
-      const controls = initMediaControls(localStream, {
-        media,
-        // Swaps the self tile's video source between the camera and the
-        // shared screen — the same tile, not a second one, since there's
-        // only ever one outgoing video track at a time either way. Someone
-        // who joined mic-only or with no media has no self tile yet (none
-        // is created without a camera stream) — sharing a screen gives
-        // them their first one.
-        onLocalVideoChanged: (stream) => {
-          if (!videoGrid) return;
-          const existingTile = videoGrid.querySelector<HTMLElement>('[data-peer="self"]');
-          if (stream) {
-            const video = existingTile?.querySelector("video");
-            if (video) video.srcObject = stream;
-            else {
-              videoGrid.append(makeSelfTile(stream));
-              videoGridOverflow.recheck();
-            }
-          } else if (existingTile && !localStream) {
-            // No camera to fall back to (this attendee joined mic-only or
-            // with no media) — the tile only ever existed for the screen
-            // share, so it goes away with it instead of sitting there black.
-            existingTile.remove();
-            videoGridOverflow.recheck();
-          }
-        },
-        onStateChange: (state) => {
-          lastReportedState = state;
-          const selfTile = videoGrid?.querySelector<HTMLElement>('[data-peer="self"]');
-          if (selfTile) updateVideoTileState(selfTile, state);
-          conn.send({ type: "media.state", ...state });
-        },
-      });
+      // Nothing may create or negotiate a WebRTC peer connection
+      // (connectToExisting, or an incoming offer via handleSignal) before
+      // this attendee's own media-consent choice has resolved — doing so
+      // and then attaching tracks afterward would mean renegotiating a
+      // connection that already exists, which risks two offers racing each
+      // other (WebRTC "glare") if the other side renegotiates too. Presence
+      // and chat/composition signaling both keep flowing immediately (so
+      // the lobby queue, composition and lyrics never wait), but the two
+      // things that touch `media` queue here and replay once wireLocalMedia
+      // runs below, so every peer connection is created exactly once, with
+      // its final track state already decided.
+      let localMediaReady = false;
+      const pendingConnectUsers = new Map<string, { userId: string; displayName: string }>();
+      const pendingSignals: RoomMessage[] = [];
 
-      function makeSelfTile(stream: MediaStream): HTMLElement {
-        return makeVideoTile("self", `${self.displayName} (you)`, stream, true, initialSelfState, {
-          onToggleMic: controls.hasMic ? controls.toggleMic : undefined,
-          onToggleCamera: controls.hasCamera ? controls.toggleCamera : undefined,
-          onToggleScreenShare: controls.toggleScreenShare,
-        });
+      function queueOrConnectToExisting(users: { userId: string; displayName: string }[]): void {
+        if (localMediaReady) {
+          void media.connectToExisting(users);
+          return;
+        }
+        for (const user of users) pendingConnectUsers.set(user.userId, user);
       }
 
-      if (localStream && videoGrid) {
-        videoGrid.append(makeSelfTile(localStream));
-        videoGridOverflow.recheck();
+      function queueOrHandleSignal(message: RoomMessage): void {
+        if (localMediaReady) void media.handleSignal(message);
+        else pendingSignals.push(message);
+      }
+
+      // Runs once this attendee's own media-consent choice resolves — never
+      // blocks on it. Builds the self tile, mic/camera/screen-share controls,
+      // and the two localStream-dependent panels, then flushes any peer
+      // connections that were waiting on this, so each one is created
+      // exactly once, already with its final track state — never created
+      // first and renegotiated afterward.
+      let localStream: MediaStream | null = null;
+      function wireLocalMedia(stream: MediaStream | null): void {
+        localStream = stream;
+        media.setLocalStream(stream);
+
+        const initialSelfState: VideoTileState = {
+          micOn: Boolean(stream?.getAudioTracks().length),
+          cameraOn: Boolean(stream?.getVideoTracks().length),
+          sharingScreen: false,
+        };
+        lastReportedState = initialSelfState;
+
+        // Built before the self tile exists — its toggle functions become
+        // that tile's clickable status icons (room-page.ts no longer has a
+        // separate "Mute mic" / "Turn camera off" / "Share screen" button
+        // row; those three actions live on the tile itself now).
+        const controls = initMediaControls(stream, {
+          media,
+          // Swaps the self tile's video source between the camera and the
+          // shared screen — the same tile, not a second one, since there's
+          // only ever one outgoing video track at a time either way. Someone
+          // who joined mic-only or with no media has no self tile yet (none
+          // is created without a camera stream) — sharing a screen gives
+          // them their first one.
+          onLocalVideoChanged: (videoStream) => {
+            if (!videoGrid) return;
+            const existingTile = videoGrid.querySelector<HTMLElement>('[data-peer="self"]');
+            if (videoStream) {
+              const video = existingTile?.querySelector("video");
+              if (video) {
+                video.srcObject = videoStream;
+                // A shared screen is never mirrored — only the camera is,
+                // matching the "looking in a mirror" convention a webcam
+                // preview is expected to follow.
+                video.classList.toggle("video-tile-mirrored", videoStream === stream);
+              } else {
+                videoGrid.append(makeSelfTile(videoStream));
+                videoGridOverflow.recheck();
+              }
+            } else if (existingTile && !stream) {
+              // No camera to fall back to (this attendee joined mic-only or
+              // with no media) — the tile only ever existed for the screen
+              // share, so it goes away with it instead of sitting there black.
+              existingTile.remove();
+              videoGridOverflow.recheck();
+            }
+          },
+          onStateChange: (state) => {
+            lastReportedState = state;
+            const selfTile = videoGrid?.querySelector<HTMLElement>('[data-peer="self"]');
+            if (selfTile) updateVideoTileState(selfTile, state);
+            conn.send({ type: "media.state", ...state });
+          },
+        });
+
+        function makeSelfTile(tileStream: MediaStream): HTMLElement {
+          return makeVideoTile(
+            "self",
+            `${self.displayName} (you)`,
+            tileStream,
+            true,
+            initialSelfState,
+            {
+              onToggleMic: controls.hasMic ? controls.toggleMic : undefined,
+              onToggleCamera: controls.hasCamera ? controls.toggleCamera : undefined,
+              onToggleScreenShare: controls.toggleScreenShare,
+            },
+            true,
+          );
+        }
+
+        if (stream && videoGrid) {
+          // ensurePeerTile may already have run for other peers by now, but
+          // never for "self" — the self tile is only ever built here.
+          videoGrid.append(makeSelfTile(stream));
+          videoGridOverflow.recheck();
+        }
+
+        const originalSoundToggle = document.getElementById("original-sound-toggle");
+        if (originalSoundToggle instanceof HTMLInputElement) {
+          if (!stream?.getAudioTracks().length) {
+            originalSoundToggle.disabled = true;
+          } else {
+            originalSoundToggle.addEventListener("change", () => {
+              void media.setOriginalSound(originalSoundToggle.checked);
+            });
+          }
+        }
+
+        localMediaReady = true;
+        // Peers we're the newcomer to (we initiate) before peers who sent us
+        // something (we only ever answer, never initiate) — a connect can
+        // never have a reply waiting on it yet, since nothing was sent until
+        // this point, so the order between the two groups can't matter for
+        // correctness, but connects first keeps the one trace of ordering
+        // (presence before signaling) that existed before buffering.
+        if (pendingConnectUsers.size > 0) void media.connectToExisting([...pendingConnectUsers.values()]);
+        pendingConnectUsers.clear();
+        const signals = pendingSignals.splice(0, pendingSignals.length);
+        for (const message of signals) void media.handleSignal(message);
       }
 
       const recordingRoot = document.getElementById("recording-controls-root");
@@ -487,32 +608,25 @@ export function initRoomPage(): void {
         });
       }
 
-      const originalSoundToggle = document.getElementById("original-sound-toggle");
-      if (originalSoundToggle instanceof HTMLInputElement) {
-        if (!localStream?.getAudioTracks().length) {
-          originalSoundToggle.disabled = true;
-        } else {
-          originalSoundToggle.addEventListener("change", () => {
-            void media.setOriginalSound(originalSoundToggle.checked);
-          });
-        }
-      }
-
       conn = connectToRoom(roomId, {
         onPresenceSync: (users) => {
           presentUsers.clear();
           for (const user of users) presentUsers.set(user.userId, user);
           rerenderPresence();
-          void media.connectToExisting(users.filter((u) => u.userId !== self.id));
+          const others = users.filter((u) => u.userId !== self.id);
+          for (const user of others) ensurePeerTile(user.userId, user.displayName);
+          queueOrConnectToExisting(others);
         },
         onPresenceJoin: (user) => {
           presentUsers.set(user.userId, user);
           rerenderPresence();
           media.noteDisplayName(user.userId, user.displayName);
+          ensurePeerTile(user.userId, user.displayName);
         },
         onPresenceLeave: (userId) => {
           presentUsers.delete(userId);
           rerenderPresence();
+          pendingConnectUsers.delete(userId);
           media.removePeer(userId);
         },
         onMessage: (message) => {
@@ -552,12 +666,20 @@ export function initRoomPage(): void {
               });
             }
           } else {
-            void media.handleSignal(message);
+            queueOrHandleSignal(message);
           }
         },
       });
 
       window.addEventListener("beforeunload", () => media.closeAll());
+
+      // Run after the room is already live (not awaited above it) — the
+      // consent card (#consent-root) still visually sits in front of the
+      // room while this is open, so the attendee's own experience is
+      // unchanged, but nothing else here had to wait for them to decide.
+      const consentRoot = document.getElementById("consent-root");
+      if (consentRoot) void askForMediaConsent(consentRoot).then(wireLocalMedia);
+      else wireLocalMedia(null);
     })
     .catch(() => {
       // requireSession already redirected to /login/

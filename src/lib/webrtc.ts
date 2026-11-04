@@ -36,6 +36,13 @@ export class RoomMedia {
     private readonly events: RoomMediaEvents,
   ) {}
 
+  // room-page.ts never lets a peer connection get created (connectToExisting
+  // or an incoming offer in handleSignal) before this attendee's own
+  // media-consent choice has resolved — it buffers presence/signals that
+  // arrive earlier and replays them once it has. So by the time
+  // getOrCreatePeer ever runs, `localStream` is already final: no peer
+  // connection is ever renegotiated to add a track after the fact, which
+  // would risk two offers racing each other (WebRTC "glare").
   setLocalStream(stream: MediaStream | null): void {
     this.localStream = stream;
   }
