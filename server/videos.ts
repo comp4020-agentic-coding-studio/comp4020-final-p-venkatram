@@ -26,3 +26,14 @@ export function setVideo(db: DatabaseSync, roomId: string, rawInput: string): Vi
   ).run(roomId, youtubeId, Date.now());
   return { youtubeId };
 }
+
+// Used when auto-advance empties the queue — distinct from setVideo's
+// validation-failure null, since "nothing queued" is a legitimate state to
+// move a room into, not a bad input to reject.
+export function clearVideo(db: DatabaseSync, roomId: string): VideoState {
+  db.prepare(
+    `INSERT INTO videos (room_id, youtube_id, updated_at) VALUES (?, NULL, ?)
+     ON CONFLICT(room_id) DO UPDATE SET youtube_id = NULL, updated_at = excluded.updated_at`,
+  ).run(roomId, Date.now());
+  return { youtubeId: null };
+}

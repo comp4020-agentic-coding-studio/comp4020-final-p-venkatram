@@ -24,7 +24,8 @@ import {
 import { getLyrics } from "./lyrics.ts";
 import { addComment, listComments } from "./lyrics-comments.ts";
 import { consumeAdmitted, listPending, resolvePending } from "./realtime/lobby.ts";
-import { getVideo } from "./videos.ts";
+import { clearVideo, getVideo, setVideo } from "./videos.ts";
+import { listQueue, listQueueForBroadcast, popNext } from "./video-queue.ts";
 import {
   addConnection,
   broadcast,
@@ -61,6 +62,7 @@ function onConnection(
   ws.send(JSON.stringify({ type: "composition.sync", ...getComposition(db, roomId) }));
   ws.send(JSON.stringify({ type: "lyrics.sync", ...lyrics, comments: listComments(db, roomId) }));
   ws.send(JSON.stringify({ type: "video.sync", ...getVideo(db, roomId) }));
+  ws.send(JSON.stringify({ type: "queue.sync", items: listQueue(db, roomId, userId) }));
   // Only the organizer gets the lobby queue — anyone already admitted (or
   // the join-request flow for a non-owner never reaches here, by design, see
   // server/routes/rooms.ts) has nothing to admit.
@@ -224,6 +226,30 @@ function handleMessage(db: DatabaseSync, roomId: string, sender: Connection, mes
   // broadcast.
   if ((record.type === "lobby.admit" || record.type === "lobby.deny") && isOwner) {
     resolvePending(roomId, String(record.userId ?? ""), record.type === "lobby.admit");
+  }
+
+  // Auto-advance: the IFrame Player API (src/lib/karaoke.ts) is the only
+  // place that can detect a video actually ending, so every connected
+  // client's player independently reports it here — never just one
+  // "designated" reporter. Safe because this check makes the handler
+  // idempotent per currently-playing video: the first report to arrive
+  // advances the queue and changes `videos.youtube_id`, so every other
+  // client's report for that same (now stale) id is a no-op rather than a
+  // second, wrong advance.
+  if (record.type === "video.ended") {
+    const current = getVideo(db, roomId);
+    if (current.youtubeId !== String(record.youtubeId ?? "")) return;
+    const next = popNext(db, roomId);
+    const nextState = next ? setVideo(db, roomId, next.youtubeId) : clearVideo(db, roomId);
+    if (!nextState) return; // next.youtubeId was already validated at add-time; defensive only
+    broadcast(roomId, { type: "video.update", ...nextState });
+    broadcast(roomId, { type: "queue.update", items: listQueueForBroadcast(db, roomId) });
+    logEvent("video.auto-advance", {
+      roomId,
+      fromYoutubeId: record.youtubeId,
+      toYoutubeId: nextState.youtubeId,
+    });
+    return;
   }
 
   // Mic/camera/screen-share status, for the video tile icons: ephemeral UI

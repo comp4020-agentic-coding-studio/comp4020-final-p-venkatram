@@ -19,8 +19,21 @@ import { handleLyricsApi } from "./routes/lyrics.ts";
 import { handleLibraryApi } from "./routes/library.ts";
 import { handleStatsApi } from "./routes/stats.ts";
 import { handleVideosApi } from "./routes/videos.ts";
+import { handleVideoQueueApi } from "./routes/video-queue.ts";
+import { handleVideoSearchApi } from "./routes/video-search.ts";
 import { handleSheetMusicApi } from "./routes/sheet-music.ts";
 import { attachWebSocketServer } from "./ws.ts";
+
+// Local dev only: a secret like YOUTUBE_API_KEY has nowhere else to come
+// from outside a deployed Fly machine's `flyctl secrets set` env. Guarded
+// because loadEnvFile throws if .env doesn't exist — most dev machines won't
+// have one, and that's fine, there's just no secret to load. .env itself is
+// gitignored, same as mise.local.toml.
+try {
+  process.loadEnvFile?.(".env");
+} catch {
+  // no .env present — nothing to load
+}
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const DIST = join(ROOT, "dist");
@@ -32,6 +45,8 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, path: string
   if (await handleLyricsApi(req, res, path, db)) return true;
   if (await handleLibraryApi(req, res, path, db)) return true;
   if (await handleVideosApi(req, res, path, db)) return true;
+  if (await handleVideoQueueApi(req, res, path, db)) return true;
+  if (await handleVideoSearchApi(req, res, path, db)) return true;
   if (await handleSheetMusicApi(req, res, path, db)) return true;
   if (await handleRoomsApi(req, res, path, db)) return true;
   if (await handleStatsApi(req, res, path, db)) return true;
