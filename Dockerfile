@@ -10,6 +10,7 @@ RUN pnpm install --frozen-lockfile
 COPY astro.config.ts tsconfig.json ./
 COPY shared ./shared
 COPY src ./src
+COPY public ./public
 RUN pnpm build
 
 # Runtime: prod deps only (marked, ws), the static build, the server, and the
