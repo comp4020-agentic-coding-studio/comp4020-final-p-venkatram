@@ -513,7 +513,12 @@ dialog::backdrop {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
-  z-index: 40;
+  /* Above every other fixed/overlay element on any page (room-bottom-bar 60,
+     video-float-layer 65, lyrics-widget 70, consent 80, fullscreen-ish 85,
+     lyrics-comment popovers 90) — the nav is a full-screen modal drawer when
+     open, so nothing on the page underneath should ever paint over it or
+     intercept its clicks, on any page it's opened from. */
+  z-index: 100;
 }
 
 .site-nav-backdrop.is-open {
@@ -539,7 +544,24 @@ dialog::backdrop {
   transform: translateX(-100%);
   transition: transform 0.2s ease;
   pointer-events: none;
-  z-index: 50;
+  z-index: 101;
+}
+
+/* Rooms/Tools/Sheet Music Hub above, and Settings/Log out below, must
+   always be fully on-screen — only the room panel switches are optional,
+   variable-height content, so that's the one piece that gives up space and
+   scrolls internally (min-height: 0 is what lets a flex child shrink below
+   its content's natural height at all) on a short viewport inside a room.
+   Without this, the room section pushed Settings/Log out below the fold
+   with no visible hint they still existed, scrollable only if you already
+   knew to try. */
+.site-nav > .site-nav-item,
+.site-nav > .site-nav-close {
+  flex-shrink: 0;
+}
+
+.site-nav-bottom {
+  flex-shrink: 0;
 }
 
 .site-nav.is-open {
@@ -1490,6 +1512,12 @@ button.video-tile-status-icon[aria-pressed="true"] {
   align-items: stretch;
   gap: 0.4rem;
   width: 100%;
+  /* The one part of the nav allowed to shrink and scroll internally — see
+     the .site-nav comment above. min-height: 0 overrides a flex item's
+     default (its content's height, which would otherwise never let this
+     actually shrink no matter how little room is left). */
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .site-nav-heading {
