@@ -985,6 +985,14 @@ button.video-tile-status-icon[aria-pressed="true"] {
   flex-wrap: wrap;
 }
 
+/* .field's own margin-bottom (for stacking fields vertically elsewhere)
+   pushes this flex row's align-items: flex-end baseline below the input's
+   actual bottom edge, since flex alignment includes margin — there's only
+   ever one field here, so that stacking space has nothing to separate. */
+.video-queue-add-form .field {
+  margin-bottom: 0;
+}
+
 .karaoke-player .muted {
   position: absolute;
   inset: 0;
