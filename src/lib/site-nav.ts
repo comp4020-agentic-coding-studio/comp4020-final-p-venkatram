@@ -1,4 +1,4 @@
-// The site-wide hamburger menu: Rooms / Activity / auth / theme always, plus
+// The site-wide hamburger menu: Rooms / auth / theme always, plus
 // (when room-page.ts reveals it) the current room's three panel switches —
 // one menu for the whole site, not a separate nav per page.
 function elements() {

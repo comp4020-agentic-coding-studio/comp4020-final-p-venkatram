@@ -12,7 +12,6 @@ import { logEvent } from "./log.ts";
 import { renderReadmePage } from "./readme.ts";
 import { serveStatic } from "./static.ts";
 import { sendJson } from "./http-util.ts";
-import { handleActivityApi } from "./routes/activity.ts";
 import { handleAuthApi } from "./routes/auth.ts";
 import { handleRoomsApi } from "./routes/rooms.ts";
 import { handleLyricsApi } from "./routes/lyrics.ts";
@@ -50,7 +49,6 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, path: string
   if (await handleSheetMusicApi(req, res, path, db)) return true;
   if (await handleRoomsApi(req, res, path, db)) return true;
   if (await handleStatsApi(req, res, path, db)) return true;
-  if (await handleActivityApi(req, res, path)) return true;
   return false;
 }
 
@@ -68,9 +66,7 @@ async function requestListener(req: IncomingMessage, res: ServerResponse): Promi
   if (path.startsWith("/api/")) {
     const handled = await handleApi(req, res, path);
     if (handled) {
-      if (path !== "/api/activity/stream") {
-        logEvent("http.request", { method: req.method, path, status: res.statusCode, ms: Date.now() - started });
-      }
+      logEvent("http.request", { method: req.method, path, status: res.statusCode, ms: Date.now() - started });
       return;
     }
     sendJson(res, 404, { error: "not found" });
