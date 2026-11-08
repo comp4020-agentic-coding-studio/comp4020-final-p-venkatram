@@ -23,8 +23,8 @@ export async function logout(): Promise<void> {
 
 // Renders the identity ("<name>" or "Log in / Sign up") into the header's
 // #auth-nav slot and the sign-out action into #auth-logout, present on every
-// page via Layout.astro — split into two slots so Settings/Activity can sit
-// between the username and the Log out button in the nav panel's markup.
+// page via Layout.astro — split into two slots so Settings can sit between
+// the username and the Log out button in the nav panel's markup.
 // The hamburger menu itself only appears once a session is confirmed —
 // logged-out visitors have no nav to open, just the brand link.
 export async function renderAuthNav(): Promise<SessionUser | null> {

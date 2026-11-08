@@ -32,7 +32,7 @@ export function initLibraryPanel(container: HTMLElement, roomId: string, isOwner
     if (data.items.length === 0) {
       const empty = document.createElement("p");
       empty.className = "muted";
-      empty.textContent = "Nothing saved here yet — export a PDF or make a recording to see it here.";
+      empty.textContent = "Nothing saved here yet, export a PDF or make a recording to see it here.";
       container.append(empty);
       return;
     }

@@ -48,6 +48,14 @@ them fit the box this runs in.
   "Original Sound" toggle exists because defaults like these are exactly what
   breaks singing together; don't reintroduce them somewhere else as a
   "quality" feature.
+- **Secrets other than the course Fly token**: a real runtime secret (e.g.
+  `YOUTUBE_API_KEY`) never goes in `fly.toml`'s tracked `[env]` block — set it
+  on the deployed machine with `flyctl secrets set NAME=value -a
+  comp4020-final-p-venkatram`. Locally, put it in a gitignored `.env` file at
+  the repo root (`NAME=value`); `server/index.ts` loads it automatically via
+  `process.loadEnvFile` on boot, a no-op if `.env` doesn't exist. Never commit
+  a key, and never paste one into a chat/agent session — set it directly in
+  your own shell.
 
 ## Process evidence
 

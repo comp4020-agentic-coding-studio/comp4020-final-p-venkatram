@@ -31,9 +31,9 @@ function saveRecordingToLibrary(roomId: string, title: string): void {
 // now each button's native `title` — a browser tooltip on hover, so the
 // header row stays compact.
 const PERSONAL_RECORD_HELP =
-  "Records your own camera/mic locally and downloads straight to this device. Uploading to Google Drive or OneDrive is a stretch goal — not built yet.";
+  "Records your own camera/mic locally and downloads straight to this device. Uploading to Google Drive or OneDrive is a stretch goal, not built yet.";
 const GROUP_RECORD_HELP =
-  "Mixes your mic with everyone currently connected and downloads the audio straight to this device. Uploading to Google Drive or OneDrive is a stretch goal — not built yet.";
+  "Mixes your mic with everyone currently connected and downloads the audio straight to this device. Uploading to Google Drive or OneDrive is a stretch goal, not built yet.";
 
 export function initRecordingPanel(container: HTMLElement, opts: RecordingPanelOptions): void {
   container.innerHTML = "";
@@ -58,7 +58,7 @@ export function initRecordingPanel(container: HTMLElement, opts: RecordingPanelO
     }
     const stream = opts.getLocalStream();
     if (!stream) {
-      personalBtn.title = "No camera or mic to record — you joined this room without one.";
+      personalBtn.title = "No camera or mic to record, you joined this room without one.";
       return;
     }
     personalRecorder.start(stream);

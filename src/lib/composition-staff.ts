@@ -85,7 +85,7 @@ function buildBarStaff(
   svg.setAttribute("role", "img");
   svg.setAttribute(
     "aria-label",
-    `${voice.name}, bar ${stepOffset / GRID_STEPS + 1} — click a position to add, change, or remove a note`,
+    `${voice.name}, bar ${stepOffset / GRID_STEPS + 1}, click a position to add, change, or remove a note`,
   );
 
   for (let line = 0; line < 5; line++) {
@@ -435,10 +435,10 @@ export function initCompositionGrid(
     // layout — it's a plain, hand-kept-in-sync print duplicate of this
     // file's geometry, not worth complicating for this.
     Promise.all(
-      voices.map((voice) => exportCompositionPdf(roomId, `${roomName} — ${voice.name}`, voice.cells, bpm, voice.bars)),
+      voices.map((voice) => exportCompositionPdf(roomId, `${roomName}, ${voice.name}`, voice.cells, bpm, voice.bars)),
     )
       .catch(() => {
-        exportError.textContent = "Couldn't export the PDF — try again.";
+        exportError.textContent = "Couldn't export the PDF, try again.";
       })
       .finally(() => {
         exportBtn.disabled = false;
@@ -484,7 +484,7 @@ export function initCompositionGrid(
     if (voices.length === 0) {
       const empty = document.createElement("p");
       empty.className = "muted";
-      empty.textContent = "No voices yet — add one to start composing.";
+      empty.textContent = "No voices yet, add one to start composing.";
       voicesContainer.append(empty);
     }
     addVoiceBtn.disabled = voices.length >= MAX_VOICES;

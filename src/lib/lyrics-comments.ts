@@ -56,7 +56,7 @@ export function initLyricsComments(opts: Options): LyricsCommentsApi {
     if (all.length === 0) {
       const empty = document.createElement("p");
       empty.className = "muted";
-      empty.textContent = "No comments yet — select some lyrics to add one.";
+      empty.textContent = "No comments yet, select some lyrics to add one.";
       opts.panelContainer.append(empty);
       return;
     }

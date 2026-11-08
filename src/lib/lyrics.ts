@@ -83,7 +83,7 @@ export function initLyrics(
         id="lyrics-raw"
         name="raw"
         rows="6"
-        placeholder='Paste lyrics — "[mm:ss.xx]text" per line for timed reference, or just plain lines'
+        placeholder='Paste lyrics, "[mm:ss.xx]text" per line for timed reference, or just plain lines'
       ></textarea>
       <button type="submit" class="btn">Upload</button>
     </div>
@@ -140,7 +140,7 @@ export function initLyrics(
     exportBtn.textContent = "Exporting...";
     void exportLyricsPdf(roomId, roomName, title, lines, lastRenderedComments)
       .catch(() => {
-        exportError.textContent = "Couldn't export the PDF — try again.";
+        exportError.textContent = "Couldn't export the PDF, try again.";
       })
       .finally(() => {
         exportBtn.disabled = false;

@@ -513,7 +513,12 @@ dialog::backdrop {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
-  z-index: 40;
+  /* Above every other fixed/overlay element on any page (room-bottom-bar 60,
+     video-float-layer 65, lyrics-widget 70, consent 80, fullscreen-ish 85,
+     lyrics-comment popovers 90) — the nav is a full-screen modal drawer when
+     open, so nothing on the page underneath should ever paint over it or
+     intercept its clicks, on any page it's opened from. */
+  z-index: 100;
 }
 
 .site-nav-backdrop.is-open {
@@ -539,7 +544,24 @@ dialog::backdrop {
   transform: translateX(-100%);
   transition: transform 0.2s ease;
   pointer-events: none;
-  z-index: 50;
+  z-index: 101;
+}
+
+/* Rooms/Tools/Sheet Music Hub above, and Settings/Log out below, must
+   always be fully on-screen — only the room panel switches are optional,
+   variable-height content, so that's the one piece that gives up space and
+   scrolls internally (min-height: 0 is what lets a flex child shrink below
+   its content's natural height at all) on a short viewport inside a room.
+   Without this, the room section pushed Settings/Log out below the fold
+   with no visible hint they still existed, scrollable only if you already
+   knew to try. */
+.site-nav > .site-nav-item,
+.site-nav > .site-nav-close {
+  flex-shrink: 0;
+}
+
+.site-nav-bottom {
+  flex-shrink: 0;
 }
 
 .site-nav.is-open {
@@ -750,53 +772,29 @@ select {
    "..." in spirit, a visual ellipsis rather than literal dots, since the cut
    is mid-tile, not mid-text. Expanding removes the cap entirely so every
    attendee's tile is visible, full page scroll taking over from there. */
-.video-grid-wrap {
-  position: relative;
-  max-height: 24rem;
-  overflow: hidden;
-}
-
-.video-grid-wrap.is-expanded {
-  max-height: none;
-}
-
-.video-grid-wrap.is-overflowing::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3rem;
-  background: linear-gradient(to bottom, transparent, var(--bg));
+/* Fixed to the viewport, above every room panel (karaoke included, z-index
+   65 is below the lyrics widget's 70 and the consent/fullscreen/toast
+   layers at 80/85/90, so those stay reachable even over a dragged tile).
+   pointer-events: none on the layer itself so it doesn't block clicks on
+   whatever's underneath — each tile re-enables pointer-events itself. */
+.video-float-layer {
+  position: fixed;
+  inset: 0;
   pointer-events: none;
+  z-index: 65;
 }
 
-.video-grid-toggle-btn {
-  display: block;
-  width: 100%;
-  margin: -0.25rem 0 1rem;
-  padding: 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  background: var(--surface-raised);
-  color: var(--text);
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.video-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
-  gap: 0.75rem;
-  margin: 1rem 0 1.5rem;
-}
-
-/* The grid item — holds the tile itself plus its status row underneath, so
-   the two move and size together as one unit within the grid. */
+/* One tile, independently draggable (src/lib/draggable-tile.ts sets
+   position: absolute inline) — holds the tile itself plus its status row
+   underneath, so the two move together as one unit. Initial placement is
+   computed in JS (room-page.ts) since CSS Grid can't express independently
+   positioned/draggable items. */
 .video-tile-wrap {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  width: 12rem;
+  pointer-events: auto;
 }
 
 .video-tile {
@@ -861,8 +859,7 @@ select {
 
 /* Below the tile, not overlaid on it — capped to the tile's own width
    (flex-wrap, not a fixed pixel size) so three icons never overflow even on
-   the narrowest tile the grid packs in (.video-grid's own minmax(12rem, 1fr)
-   floor). */
+   a tile at its floor width (.video-tile-wrap's own 12rem). */
 .video-tile-status {
   display: flex;
   justify-content: center;
@@ -968,6 +965,54 @@ button.video-tile-status-icon[aria-pressed="true"] {
   width: 100%;
   height: 100%;
   border: none;
+}
+
+.video-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.video-queue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.video-queue-item-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.video-queue-vote-btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+
+.video-queue-score {
+  min-width: 1.5rem;
+  text-align: center;
+  font-weight: 700;
+}
+
+.video-queue-add-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* .field's own margin-bottom (for stacking fields vertically elsewhere)
+   pushes this flex row's align-items: flex-end baseline below the input's
+   actual bottom edge, since flex alignment includes margin — there's only
+   ever one field here, so that stacking space has nothing to separate. */
+.video-queue-add-form .field {
+  margin-bottom: 0;
 }
 
 .karaoke-player .muted {
@@ -1467,6 +1512,12 @@ button.video-tile-status-icon[aria-pressed="true"] {
   align-items: stretch;
   gap: 0.4rem;
   width: 100%;
+  /* The one part of the nav allowed to shrink and scroll internally — see
+     the .site-nav comment above. min-height: 0 overrides a flex item's
+     default (its content's height, which would otherwise never let this
+     actually shrink no matter how little room is left). */
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .site-nav-heading {

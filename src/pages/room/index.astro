@@ -30,11 +30,6 @@ import Layout from "../../layouts/Layout.astro";
         <div class="banner" id="presence-banner">
           <p><strong>Here now:</strong> <span id="presence-list"></span></p>
         </div>
-        <div id="video-grid-wrap" class="video-grid-wrap">
-          <div id="video-grid" class="video-grid"></div>
-        </div>
-        <button type="button" id="video-grid-toggle" class="video-grid-toggle-btn" hidden></button>
-
         <!-- Pinned to the bottom of the viewport rather than sitting in the
              panel's normal flow — stays reachable without scrolling, and
              (being a descendant of this panel) hides along with everything
@@ -43,7 +38,7 @@ import Layout from "../../layouts/Layout.astro";
           <label class="field" style="flex-direction:row; align-items:center; gap:0.5rem; margin:0;">
             <input type="checkbox" id="original-sound-toggle" />
             <span
-              >Original Sound (no echo cancellation, noise suppression, or auto-gain — for singing together, not
+              >Original Sound (no echo cancellation, noise suppression, or auto-gain, for singing together, not
               talking)</span
             >
           </label>
@@ -61,7 +56,7 @@ import Layout from "../../layouts/Layout.astro";
         <div class="card">
           <h2 style="margin-top:0;">Compose together</h2>
           <div class="banner">
-            <p>Pick a duration, then click a position on a staff to place or remove a note. Add a voice for each line you want — they share one tempo and play together. Everyone here sees the same staves, live.</p>
+            <p>Pick a duration, then click a position on a staff to place or remove a note. Add a voice for each line you want, they share one tempo and play together. Everyone here sees the same staves, live.</p>
           </div>
           <div id="composition-root"></div>
         </div>
@@ -70,11 +65,19 @@ import Layout from "../../layouts/Layout.astro";
       <section id="panel-karaoke" class="room-panel" hidden>
         <div class="card">
           <h2 style="margin-top:0;">Karaoke</h2>
-          <p class="muted">Paste a YouTube link to watch together — playback only, via YouTube's own player.</p>
+          <p class="muted">Paste a YouTube link to watch together, playback only, via YouTube's own player.</p>
           <div id="karaoke-root"></div>
+          <div id="queue-root"></div>
         </div>
       </section>
     </div>
+
+    <!-- Everyone's webcam tile, individually draggable, floating over
+         whichever room panel is active (karaoke included) — a sibling of
+         .room-panels, not inside any one of them, so it's never hidden by
+         the panel switcher. Positions reset every page load: purely local,
+         never persisted or synced (src/lib/draggable-tile.ts). -->
+    <div id="video-float-layer" class="video-float-layer"></div>
 
     <!-- Floating chat widget, fixed to the viewport corner over every room
          panel (not just Collaboration) — collapsed to a launcher bubble by

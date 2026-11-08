@@ -114,6 +114,14 @@ export function joinRoom(db: DatabaseSync, roomId: string, userId: string): void
   );
 }
 
+// Used to gate actions that any room member (not just the owner) may take —
+// e.g. voting on or skipping a queued karaoke video — so a stranger who
+// learns a room's item id without ever having joined can't act on it.
+export function isRoomMember(db: DatabaseSync, roomId: string, userId: string): boolean {
+  const row = db.prepare("SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?").get(roomId, userId);
+  return Boolean(row);
+}
+
 export function listRoomsForUser(db: DatabaseSync, userId: string): Room[] {
   const rows = db
     .prepare(

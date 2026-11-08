@@ -13,6 +13,8 @@ import { initRecordingPanel } from "./recording-panel";
 import { initLibraryPanel } from "./library-panel";
 import { initMediaControls } from "./media-controls";
 import { initKaraoke } from "./karaoke";
+import { initVideoQueue, type QueueItemClient } from "./video-queue";
+import { makeDraggable } from "./draggable-tile";
 import { colorForUserId } from "./user-color";
 
 interface Room {
@@ -80,44 +82,6 @@ function initLyricsWidget(): { close: () => void } {
   });
 
   return { close: () => setOpen(false) };
-}
-
-// Caps the video grid's height (video-grid-wrap's own max-height, in CSS) so
-// a large room doesn't push the bottom bar or the lyrics widget off-screen.
-// Re-checked after every tile add/remove, since whether it overflows depends
-// on how many attendees are actually present right now.
-function initVideoGridOverflow(): { recheck: () => void } {
-  const wrap = document.getElementById("video-grid-wrap");
-  const grid = document.getElementById("video-grid");
-  const toggle = document.getElementById("video-grid-toggle");
-  if (!(wrap instanceof HTMLElement) || !grid || !(toggle instanceof HTMLButtonElement)) {
-    return { recheck: () => {} };
-  }
-
-  function setExpanded(expanded: boolean): void {
-    wrap!.classList.toggle("is-expanded", expanded);
-    toggle!.textContent = expanded ? "Show fewer" : "Show all attendees";
-  }
-
-  toggle.addEventListener("click", () => {
-    setExpanded(!wrap.classList.contains("is-expanded"));
-  });
-
-  function recheck(): void {
-    // Measuring while expanded would always read "no overflow" (max-height
-    // is off), so collapse first, measure, then restore whichever state the
-    // user was already in.
-    const wasExpanded = wrap!.classList.contains("is-expanded");
-    wrap!.classList.remove("is-expanded");
-    const overflowing = grid!.scrollHeight > wrap!.clientHeight;
-    wrap!.classList.toggle("is-overflowing", overflowing);
-    toggle!.toggleAttribute("hidden", !overflowing);
-    if (!overflowing) setExpanded(false);
-    else setExpanded(wasExpanded);
-  }
-
-  recheck();
-  return { recheck };
 }
 
 // A tiny SVG icon per status, drawn inline rather than pulled in as a font —
@@ -188,8 +152,8 @@ function renderStatusIcons(container: HTMLElement, state: VideoTileState, action
 
   const micLabel = actions?.onToggleMic
     ? state.micOn
-      ? "Mic on — click to mute"
-      : "Mic off — click to unmute"
+      ? "Mic on, click to mute"
+      : "Mic off, click to unmute"
     : state.micOn
       ? "Mic on"
       : "Mic off";
@@ -197,8 +161,8 @@ function renderStatusIcons(container: HTMLElement, state: VideoTileState, action
 
   const camLabel = actions?.onToggleCamera
     ? state.cameraOn
-      ? "Camera on — click to turn off"
-      : "Camera off — click to turn on"
+      ? "Camera on, click to turn off"
+      : "Camera off, click to turn on"
     : state.cameraOn
       ? "Camera on"
       : "Camera off";
@@ -209,7 +173,7 @@ function renderStatusIcons(container: HTMLElement, state: VideoTileState, action
   // that peer is actually sharing, since otherwise there's nothing to
   // indicate and no action a click there could take.
   if (actions?.onToggleScreenShare) {
-    const label = state.sharingScreen ? "Sharing screen — click to stop" : "Share your screen";
+    const label = state.sharingScreen ? "Sharing screen, click to stop" : "Share your screen";
     addIcon("screen", "screen", true, label, label, actions.onToggleScreenShare);
   } else if (state.sharingScreen) {
     addIcon("screen", "screen", true, "Sharing screen", "Sharing screen");
@@ -301,7 +265,28 @@ function makeVideoTile(
   renderStatusIcons(statusRow, initialState, actions);
 
   wrap.append(tile, statusRow);
+  makeDraggable(wrap, { ignoreSelector: ".video-tile-fullscreen, .video-tile-status-icon" });
   return wrap;
+}
+
+// Tiles float independently (decision: not a single grid moved as a unit),
+// so each one's starting spot is computed here rather than left to CSS Grid
+// auto-flow — a simple incrementing row/col offset, just enough to start
+// looking roughly grid-like before the first drag moves anything. Resets
+// every page load (positions are never persisted or synced), so this only
+// needs to avoid stacking new tiles directly on top of existing ones.
+let nextTileSlot = 0;
+const TILE_WIDTH = 192; // matches .video-tile-wrap's 12rem width (16px/rem default)
+const TILE_HEIGHT = 170; // 4:3 video + label + status row, approximate
+const TILE_GAP = 12;
+const TILES_PER_ROW = 4;
+
+function placeTile(wrap: HTMLElement): void {
+  const col = nextTileSlot % TILES_PER_ROW;
+  const row = Math.floor(nextTileSlot / TILES_PER_ROW);
+  nextTileSlot += 1;
+  wrap.style.left = `${col * (TILE_WIDTH + TILE_GAP) + TILE_GAP}px`;
+  wrap.style.top = `${row * (TILE_HEIGHT + TILE_GAP) + TILE_GAP}px`;
 }
 
 // Fills in a tile that was created without a stream (the no-media-at-all
@@ -384,8 +369,7 @@ export function initRoomPage(): void {
         });
       }
 
-      const videoGrid = document.getElementById("video-grid");
-      const videoGridOverflow = initVideoGridOverflow();
+      const videoFloatLayer = document.getElementById("video-float-layer");
       const presenceList = document.getElementById("presence-list");
       const presentUsers = new Map<string, PresentUser>();
       const rerenderPresence = () => {
@@ -400,15 +384,14 @@ export function initRoomPage(): void {
       // this, a no-media peer would only ever get a tile via onPeerStream,
       // which never fires for them since they have nothing to send.
       function ensurePeerTile(userId: string, displayName: string): void {
-        if (!videoGrid || videoGrid.querySelector(`[data-peer="${userId}"]`)) return;
-        videoGrid.append(
-          makeVideoTile(userId, displayName, null, false, {
-            micOn: false,
-            cameraOn: false,
-            sharingScreen: false,
-          }),
-        );
-        videoGridOverflow.recheck();
+        if (!videoFloatLayer || videoFloatLayer.querySelector(`[data-peer="${userId}"]`)) return;
+        const wrap = makeVideoTile(userId, displayName, null, false, {
+          micOn: false,
+          cameraOn: false,
+          sharingScreen: false,
+        });
+        placeTile(wrap);
+        videoFloatLayer.append(wrap);
       }
 
       const compositionRoot = document.getElementById("composition-root");
@@ -422,7 +405,9 @@ export function initRoomPage(): void {
         ? initLyrics(lyricsRoot, roomId, data.room.name, { send: (msg) => conn.send(msg) }, lyricsWidget.close)
         : null;
       const karaokeRoot = document.getElementById("karaoke-root");
-      const karaokeController = karaokeRoot ? initKaraoke(karaokeRoot, roomId) : null;
+      const karaokeController = karaokeRoot ? initKaraoke(karaokeRoot, roomId, { send: (msg) => conn.send(msg) }) : null;
+      const queueRoot = document.getElementById("queue-root");
+      const queueController = queueRoot ? initVideoQueue(queueRoot, roomId) : null;
       const remoteStreams = new Map<string, MediaStream>();
       // Starts at "nothing yet" and is corrected the moment this attendee's
       // own consent choice resolves (wireLocalMedia below) — none of this
@@ -434,14 +419,14 @@ export function initRoomPage(): void {
         {
           onPeerStream: (peer) => {
             remoteStreams.set(peer.userId, peer.stream);
-            if (!videoGrid) return;
+            if (!videoFloatLayer) return;
             // ensurePeerTile (presence join/sync) already created this
             // peer's tile, possibly before their stream existed — attach
             // into it rather than replacing it, so a tile already on screen
-            // never flashes or loses its place in the grid when the track
-            // actually arrives.
+            // never flashes or loses its place when the track actually
+            // arrives.
             ensurePeerTile(peer.userId, peer.displayName);
-            const wrap = videoGrid.querySelector<HTMLElement>(`[data-peer="${peer.userId}"]`);
+            const wrap = videoFloatLayer.querySelector<HTMLElement>(`[data-peer="${peer.userId}"]`);
             if (!wrap) return;
             attachStreamToTile(wrap, peer.stream);
             // Assumed on until this peer's own media.state says otherwise —
@@ -449,13 +434,11 @@ export function initRoomPage(): void {
             // state broadcast (sent right after media-controls.ts mounts for
             // them) corrects this within moments if it's actually off.
             updateVideoTileState(wrap, { micOn: true, cameraOn: true, sharingScreen: false });
-            videoGridOverflow.recheck();
             conn.send({ type: "media.state", ...lastReportedState });
           },
           onPeerLeft: (userId) => {
             remoteStreams.delete(userId);
-            videoGrid?.querySelector(`[data-peer="${userId}"]`)?.remove();
-            videoGridOverflow.recheck();
+            videoFloatLayer?.querySelector(`[data-peer="${userId}"]`)?.remove();
           },
         },
       );
@@ -519,8 +502,8 @@ export function initRoomPage(): void {
           // is created without a camera stream) — sharing a screen gives
           // them their first one.
           onLocalVideoChanged: (videoStream) => {
-            if (!videoGrid) return;
-            const existingTile = videoGrid.querySelector<HTMLElement>('[data-peer="self"]');
+            if (!videoFloatLayer) return;
+            const existingTile = videoFloatLayer.querySelector<HTMLElement>('[data-peer="self"]');
             if (videoStream) {
               const video = existingTile?.querySelector("video");
               if (video) {
@@ -530,20 +513,20 @@ export function initRoomPage(): void {
                 // preview is expected to follow.
                 video.classList.toggle("video-tile-mirrored", videoStream === stream);
               } else {
-                videoGrid.append(makeSelfTile(videoStream));
-                videoGridOverflow.recheck();
+                const wrap = makeSelfTile(videoStream);
+                placeTile(wrap);
+                videoFloatLayer.append(wrap);
               }
             } else if (existingTile && !stream) {
               // No camera to fall back to (this attendee joined mic-only or
               // with no media) — the tile only ever existed for the screen
               // share, so it goes away with it instead of sitting there black.
               existingTile.remove();
-              videoGridOverflow.recheck();
             }
           },
           onStateChange: (state) => {
             lastReportedState = state;
-            const selfTile = videoGrid?.querySelector<HTMLElement>('[data-peer="self"]');
+            const selfTile = videoFloatLayer?.querySelector<HTMLElement>('[data-peer="self"]');
             if (selfTile) updateVideoTileState(selfTile, state);
             conn.send({ type: "media.state", ...state });
           },
@@ -565,11 +548,12 @@ export function initRoomPage(): void {
           );
         }
 
-        if (stream && videoGrid) {
+        if (stream && videoFloatLayer) {
           // ensurePeerTile may already have run for other peers by now, but
           // never for "self" — the self tile is only ever built here.
-          videoGrid.append(makeSelfTile(stream));
-          videoGridOverflow.recheck();
+          const wrap = makeSelfTile(stream);
+          placeTile(wrap);
+          videoFloatLayer.append(wrap);
         }
 
         const originalSoundToggle = document.getElementById("original-sound-toggle");
@@ -648,6 +632,10 @@ export function initRoomPage(): void {
             lyricsController?.applyCommentAdd(message.comment as LyricsComment);
           } else if (message.type === "video.sync" || message.type === "video.update") {
             karaokeController?.applyVideo({ youtubeId: (message.youtubeId as string | null) ?? null });
+          } else if (message.type === "queue.sync") {
+            queueController?.applyQueue((message.items as QueueItemClient[]) ?? [], true);
+          } else if (message.type === "queue.update") {
+            queueController?.applyQueue((message.items as QueueItemClient[]) ?? [], false);
           } else if (message.type === "lobby.sync") {
             lobbyAdmin?.setPending((message.pending as PendingRequest[]) ?? []);
           } else if (message.type === "lobby.request") {
@@ -657,7 +645,7 @@ export function initRoomPage(): void {
               requestedAt: Number(message.requestedAt) || Date.now(),
             });
           } else if (message.type === "media.state") {
-            const peerTile = videoGrid?.querySelector<HTMLElement>(`[data-peer="${String(message.from)}"]`);
+            const peerTile = videoFloatLayer?.querySelector<HTMLElement>(`[data-peer="${String(message.from)}"]`);
             if (peerTile) {
               updateVideoTileState(peerTile, {
                 micOn: Boolean(message.micOn),
