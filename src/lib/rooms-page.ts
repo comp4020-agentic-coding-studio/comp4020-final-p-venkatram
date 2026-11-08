@@ -22,7 +22,7 @@ async function loadRooms(): Promise<void> {
     list.className = "";
     const empty = document.createElement("p");
     empty.className = "muted";
-    empty.textContent = "No rooms yet — create one below.";
+    empty.textContent = "No rooms yet, create one below.";
     list.append(empty);
     trigger?.setAttribute("hidden", "");
     if (dialog instanceof HTMLDialogElement && !dialog.open) dialog.showModal();

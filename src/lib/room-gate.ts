@@ -25,7 +25,7 @@ async function submitJoinRequest(roomId: string, password: string): Promise<Join
     if (!res.ok) return { ok: false, error: data.error ?? "Couldn't join this room." };
     return { ok: true, admitted: Boolean(data.admitted) };
   } catch {
-    return { ok: false, error: "Couldn't reach the server — try again." };
+    return { ok: false, error: "Couldn't reach the server, try again." };
   }
 }
 
@@ -40,7 +40,7 @@ function renderWaiting(container: HTMLElement): { setOffline: () => void; setDen
   heading.textContent = "Waiting for the host to let you in...";
   const note = document.createElement("p");
   note.className = "muted";
-  note.textContent = "Hang tight — the room's organizer needs to admit you.";
+  note.textContent = "Hang tight, the room's organizer needs to admit you.";
   card.append(heading, note);
   container.append(card);
 

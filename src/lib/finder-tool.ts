@@ -79,7 +79,7 @@ function initNoteFinder(): HTMLElement {
     const midi = Number(midiInput.value);
     if (!Number.isFinite(midi)) return;
     const { name, octave } = midiToNoteName(midi);
-    result.textContent = `${name}${octave} — ${midiToFrequency(midi).toFixed(1)} Hz`;
+    result.textContent = `${name}${octave}, ${midiToFrequency(midi).toFixed(1)} Hz`;
   }
   midiInput.addEventListener("input", update);
 

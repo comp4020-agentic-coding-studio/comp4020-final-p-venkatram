@@ -45,7 +45,7 @@ export async function exportLyricsPdf(
 
   pdf.setFont("helvetica", "italic");
   pdf.setFontSize(10);
-  pdf.text(`WaveForge — ${roomName || "Untitled room"} · exported ${new Date().toLocaleString()}`, MARGIN, y);
+  pdf.text(`WaveForge, ${roomName || "Untitled room"} · exported ${new Date().toLocaleString()}`, MARGIN, y);
   y += LINE_HEIGHT * 1.5;
 
   pdf.setFont("helvetica", "normal");

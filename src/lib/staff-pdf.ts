@@ -72,7 +72,7 @@ function buildExportSvg(roomName: string, cells: Cell[], bpm: number, bars: numb
   background.setAttribute("fill", "#ffffff");
   svg.append(background);
 
-  svg.append(text(LEFT_MARGIN, 42, 26, `WaveForge — ${roomName || "Untitled room"}`, { "font-weight": "bold" }));
+  svg.append(text(LEFT_MARGIN, 42, 26, `WaveForge, ${roomName || "Untitled room"}`, { "font-weight": "bold" }));
   svg.append(
     text(LEFT_MARGIN, 66, 13, `${bpm} bpm · exported ${new Date().toLocaleString()}`, {
       fill: "#555555",
