@@ -2,39 +2,45 @@
 
 ## What good means here
 
-WaveForge is a small room for music teaching and rehearsal across distance: a
-teacher or lead voice models a phrase, lyrics scroll past so a learner can
-follow the words, and everyone answers back on camera, by consent. "Good"
-here is not "feels like being in the same room", that promise breaks the
-moment you test it. The round-trip time between two ordinary home internet
-connections is tens to low hundreds of milliseconds, and no amount of client
-code removes it. A platform that pretends otherwise either lies about its
-latency or falls apart the first time two singers try to harmonise live.
+Most real-time collaboration tools treat latency as a bug to hide: predictive
+typing, optimistic UI, client-side smoothing over the gap between what you do
+and what everyone else sees a moment later. The round-trip between two
+ordinary home internet connections is tens to low hundreds of milliseconds,
+no client code removes that, and for anything that needs to feel
+simultaneous, the gap always wins eventually, the first time two singers
+try to actually harmonise live over it.
 
-So WaveForge is honest about what it can and can't do, and designs for the
-shape that already works over a gap that size: call-and-response, not
-simultaneous unison. One person leads a phrase; others answer in turn, or
-layer a part on top once they've heard it, the way a singing lesson, a round,
-or a rehearsal section already runs. The shared composition space, the
-lyrics cursor, and group recordings all follow from that, they support a
-conversation with a short delay, not a studio take.
+WaveForge's answer isn't to hide the gap better, it's to build around an
+activity the gap doesn't break: call-and-response, not unison. A teacher or
+lead voice models a phrase, lyrics scroll past so a learner can follow, and
+everyone answers back on camera, in turn or layered once they've heard it,
+the way a singing lesson, a round, or a rehearsal section already runs
+face-to-face. That's the one idea every shared feature here follows from, not
+a workaround bolted on after the fact: the composition space, the lyrics
+cursor, and group recordings all exist to support a conversation with a short
+delay, not a studio take, and every one of them is pointless alone. The room
+is more interesting with other people in it because they're who you're
+responding to, not just who's watching.
 
-Two smaller, specific choices came out of looking at how existing call
-software gets in musicians' way. Zoom ships an explicit "Original Sound for
-Musicians" toggle because its default audio pipeline, echo cancellation,
-noise suppression, automatic gain, is tuned for one voice talking at a time,
-and actively fights two people singing together: it ducks, gates, and
-flattens exactly the sound a duet needs. WaveForge builds the same idea in
-natively, as a toggle on its own call feature, rather than asking anyone to
-route through a separate app. And because this is a learning tool, cameras
-and microphones never turn on by assumption, every session asks first,
-visibly, and can be turned off without losing your place in the room.
+That idea is enforced where it can be, not just claimed. [CLAUDE.md](CLAUDE.md)'s
+audio-honesty rule bans exactly the processing, echo cancellation, noise
+suppression, auto-gain, that every mainstream call tool applies by default
+and that actively fights two people singing together; Zoom ships its own
+"Original Sound for Musicians" toggle for this same reason, "Original Sound"
+here is the equivalent, on by choice, never assumed. Consent before any
+camera or microphone access is a second rule enforced the same way, checked
+fresh every time a room is entered, never remembered from last time. What
+stays a judgment call rather than a check: the specific shape of
+call-and-response, a leader-driven lyrics cursor rather than, say,
+leader-driven audio mixing, is a product decision `spec/` can't verify,
+defended here instead of hidden behind a passing test.
 
-This fits the final project brief's own values: small, single-purpose, for
-small groups, not a general-purpose conferencing clone. WaveForge doesn't try
-to replace Zoom, Discord, or a DAW, it does one thing (a teacher and a few
-students working a piece together over distance) and keeps the rest out of
-the way.
+This is also why the brief's own smallness fits without feeling shrunk to
+size: an app for a teacher and a few students working one piece together is
+the whole target, not a limited version of something bigger, and a feature
+that doesn't serve call-and-response, real-time singing detection to drive
+the lyrics cursor automatically, for instance, was declined for exactly that
+reason, not because it was hard to build.
 
 ## Where this came from
 
